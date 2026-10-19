@@ -1,0 +1,30 @@
+name: Video Uploader Runner
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Har 30 minute me automatic chalu hoga check karne ke liye
+  workflow_dispatch: # Isse tum GitHub website par jaakar manually click karke bhi start kar sakte ho
+
+jobs:
+  run-uploader:
+    runs-on: ubuntu-latest # Yeh wahi free Linux VM hai
+
+    steps:
+    - name: Clone Code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install Libraries
+      run: npm install
+
+    - name: Execute Bot
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        REDIRECT_URI: ${{ secrets.REDIRECT_URI }}
+        REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+      run: node upload.js

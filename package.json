@@ -1,0 +1,19 @@
+{
+  "name": "youtube-clone-root",
+  "version": "1.0.0",
+  "description": "YouTube Clone Root",
+  "scripts": {
+    "install:backend": "npm install --prefix backend",
+    "install:frontend": "npm install --prefix frontend",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm start --prefix frontend",
+    "start": "npx -y concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "next": "^16.2.9"
+  }
+}

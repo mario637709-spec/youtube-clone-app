@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build YouTube Clone APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x frontend/android/gradlew
+
+      - name: Build Debug APK
+        working-directory: frontend/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: YouTubeClone-Debug-APK
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      - name: Create Release with APK Download
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v1.0.0-${{ github.run_number }}
+          name: YouTube Clone Android App v1.0.${{ github.run_number }}
+          body: |
+            ## 📱 YouTube Clone Android App
+            Automated build from GitHub Actions.
+            - Direct Google Video streaming without CORS restrictions.
+            - Mobile IP binding for direct CDN streaming.
+          files: frontend/android/app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

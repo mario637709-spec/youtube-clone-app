@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Build Outputs
+build/
+dist/
+.next/
+out/
+
+# Android Build Outputs
+.gradle/
+**/build/
+!frontend/android/build.gradle
+!frontend/android/app/build.gradle
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/capacitor-cordova-android-plugins/build/
+
+# Media & Videos
+videos/
+cache/
+images/
+uploads/
+
+# Exclude backend entirely (backend runs on server/Render, not inside mobile APK)
+backend/
+src/
+errors/
+SETUP.md
+START-HERE.md
+
+# Logs, Credentials & Secrets
+*.log
+*.txt
+*.env
+*.env.*
+login.json
+fix.js
+get_video.js
+retranscode.js
+render.yaml
+Procfile
+
+# Misc
+.DS_Store
+Thumbs.db

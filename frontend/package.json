@@ -1,0 +1,50 @@
+{
+  "name": "youtube-clone-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@capacitor/core": "^8.4.1",
+    "@next/swc-win32-x64-msvc": "^16.2.9",
+    "axios": "^1.6.0",
+    "bgutils-js": "^4.0.3",
+    "hls.js": "^1.6.16",
+    "next": "^16.2.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-player": "^3.4.0",
+    "youtubei.js": "^17.0.1",
+    "zustand": "^5.0.14"
+  },
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "proxy": "https://kiro-youtube-app.vercel.app",
+  "devDependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@types/node": "^26.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}
