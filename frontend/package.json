@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "@capacitor/core": "^8.4.1",
-    "@next/swc-win32-x64-msvc": "^16.2.9",
     "axios": "^1.6.0",
     "bgutils-js": "^4.0.3",
     "hls.js": "^1.6.16",
