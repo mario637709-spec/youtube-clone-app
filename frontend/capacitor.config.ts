@@ -3,10 +3,9 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.kiro.youtube',
   appName: 'YouTube Clone',
-  webDir: 'public',
+  webDir: 'out',
   bundledWebRuntime: false,
   server: {
-    url: 'https://kiro-youtube-app-frontend.onrender.com/',
     cleartext: true
   },
   plugins: {

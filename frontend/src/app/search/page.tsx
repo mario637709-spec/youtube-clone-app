@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar/Navbar';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import VideoCard from '@/components/VideoCard/VideoCard';
 import { apiClient } from '@/utils/api';
+import { initialFeed } from '@/data/initialFeed';
 import '@/pages/Search.css';
 
 const SearchContent = () => {
@@ -20,9 +21,22 @@ const SearchContent = () => {
       setLoading(true);
       try {
         const data = await apiClient.get(`/videos?search=${encodeURIComponent(query)}`);
-        setSearchResults(data);
+        const list = Array.isArray(data) ? data : (data && Array.isArray(data.videos) ? data.videos : []);
+        if (list.length > 0) {
+          setSearchResults(list);
+        } else {
+          throw new Error('No backend results');
+        }
       } catch (err) {
-        console.error('Error fetching search results:', err);
+        console.warn('Backend search unavailable, searching initialFeed catalog:', err);
+        const q = query.toLowerCase().trim();
+        const matches = initialFeed.filter(v =>
+          (v.title || '').toLowerCase().includes(q) ||
+          (v.description || '').toLowerCase().includes(q) ||
+          (v.category || '').toLowerCase().includes(q) ||
+          (v.channel?.name || '').toLowerCase().includes(q)
+        );
+        setSearchResults(matches.length > 0 ? matches : initialFeed.slice(0, 10));
       } finally {
         setLoading(false);
       }

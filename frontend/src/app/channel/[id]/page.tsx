@@ -9,6 +9,10 @@ import { dummyChannels } from '@/data/dummyData';
 import { apiClient } from '@/utils/api';
 import '@/pages/Channel.css';
 
+export function generateStaticParams() {
+  return [{ id: '1' }, { id: '2' }, { id: '3' }, { id: 'default' }];
+}
+
 const Channel = () => {
   const { id } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);

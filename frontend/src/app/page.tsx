@@ -8,7 +8,7 @@ import { categories } from '@/data/dummyData';
 import { apiClient } from '@/utils/api';
 import useVideoStore from '@/store/videoStore';
 import { getGuestId } from '@/utils/analytics';
-import { prewarmVideos } from '@/utils/clientStream';
+import { initialFeed } from '@/data/initialFeed';
 import '@/pages/Home.css';
 
 const Home = () => {
@@ -55,10 +55,20 @@ const Home = () => {
       try {
         const data = await apiClient.get(`/feed?category=${encodeURIComponent(homeCategory)}&guestId=${getGuestId()}&page=1&limit=20`);
         const list = extractList(data);
-        setVideos(list);
-        applyHasMore(data, list);
+        if (list && list.length > 0) {
+          setVideos(list);
+          applyHasMore(data, list);
+        } else {
+          throw new Error('Empty feed returned from backend');
+        }
       } catch (err) {
-        console.error('Error fetching initial videos:', err);
+        console.warn('Backend unavailable, using initialFeed fallback:', err);
+        const filtered = homeCategory === 'All'
+          ? initialFeed
+          : initialFeed.filter(v => (v.category || '').toLowerCase() === homeCategory.toLowerCase());
+        setVideos(filtered.length > 0 ? filtered : initialFeed);
+        hasMoreRef.current = false;
+        setHasMore(false);
       } finally {
         setLoading(false);
       }

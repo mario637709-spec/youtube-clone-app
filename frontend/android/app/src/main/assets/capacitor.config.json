@@ -4,7 +4,6 @@
 	"webDir": "public",
 	"bundledWebRuntime": false,
 	"server": {
-		"url": "https://kiro-youtube-app-frontend.onrender.com/",
 		"cleartext": true
 	},
 	"plugins": {

@@ -25,6 +25,10 @@ jobs:
         working-directory: frontend
         run: npm install --legacy-peer-deps
 
+      - name: Build Next.js Static Web Bundle
+        working-directory: frontend
+        run: npx next build
+
       - name: Sync Capacitor Android
         working-directory: frontend
         run: npx cap sync android || true

@@ -22,6 +22,10 @@ export const apiClient = {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.message || 'API request failed');
     }
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('API returned non-JSON response');
+    }
     return response.json();
   },
 
