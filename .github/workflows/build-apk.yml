@@ -23,6 +23,10 @@ jobs:
         working-directory: frontend
         run: npm install --legacy-peer-deps
 
+      - name: Sync Capacitor Android
+        working-directory: frontend
+        run: npx cap sync android || true
+
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
