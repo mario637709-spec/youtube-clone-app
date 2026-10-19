@@ -27,7 +27,7 @@ uploads/
 
 # Exclude backend entirely (backend runs on server/Render, not inside mobile APK)
 backend/
-src/
+/src/
 errors/
 SETUP.md
 START-HERE.md

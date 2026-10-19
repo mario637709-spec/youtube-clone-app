@@ -1,0 +1,15 @@
+{
+	"appId": "com.kiro.youtube",
+	"appName": "YouTube Clone",
+	"webDir": "public",
+	"bundledWebRuntime": false,
+	"server": {
+		"url": "https://kiro-youtube-app-frontend.onrender.com/",
+		"cleartext": true
+	},
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		}
+	}
+}

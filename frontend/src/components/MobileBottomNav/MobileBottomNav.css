@@ -1,0 +1,88 @@
+﻿/* Mobile bottom navigation â€” YouTube app style. Only visible on phones. */
+.mb-nav {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .mb-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--yt-glass-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-top: 1px solid var(--yt-glass-border);
+    z-index: 999;
+    justify-content: space-around;
+    align-items: stretch;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mb-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex: 1;
+    color: var(--yt-text-secondary);
+    text-decoration: none;
+    min-width: 0;
+    transition: color 0.25s var(--yt-apple-easing), transform 0.2s var(--yt-bounce-easing);
+  }
+
+  .mb-nav-item:active {
+    transform: scale(0.9);
+  }
+
+  .mb-nav-item.active {
+    color: var(--yt-accent);
+  }
+
+  .mb-nav-item.active .mb-nav-icon {
+    transform: translateY(-1px) scale(1.08);
+    filter: drop-shadow(0 2px 6px rgba(255, 0, 51, 0.45));
+  }
+
+  .mb-nav-icon {
+    display: flex;
+    transition: transform 0.25s var(--yt-bounce-easing), filter 0.25s var(--yt-apple-easing);
+  }
+
+  .mb-nav-label {
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .mb-nav-create {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 24px;
+    border-radius: 8px;
+    background: var(--yt-text-primary);
+    color: var(--yt-bg-main);
+    margin-top: -2px;
+  }
+
+  .mb-nav-create svg {
+    margin: 0;
+  }
+
+  /* Content needs bottom padding so nav doesn't cover the last row */
+  body {
+    padding-bottom: 56px;
+  }
+}
+
+@media (max-width: 400px) {
+  .mb-nav-label {
+    font-size: 10px;
+  }
+}
+
