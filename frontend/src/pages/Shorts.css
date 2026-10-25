@@ -1,220 +1,516 @@
-﻿.shorts-page {
+/* YouTube Shorts OLED Immersion Styling */
+.shorts-immersion-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  overflow: hidden;
+  z-index: 50;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background-color: var(--yt-bg-main);
-  overflow: hidden;
 }
 
-.shorts-content {
+/* 1. TOP HEADER OVERLAY */
+.shorts-top-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
   display: flex;
-  justify-content: center;
   align-items: center;
-  flex: 1;
-  padding-top: 60px; /* Space for Navbar */
-  transition: margin-left 0.3s ease;
-  height: calc(100vh - 60px);
+  justify-content: space-between;
+  padding: max(env(safe-area-inset-top, 12px), 12px) 16px 8px 16px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, transparent 100%);
+  pointer-events: auto;
 }
 
-.shorts-scroll-container {
+.shorts-top-left,
+.shorts-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shorts-glass-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.shorts-glass-icon-btn:active {
+  transform: scale(0.9);
+}
+
+.shorts-glass-icon-btn span {
+  font-size: 20px !important;
+}
+
+/* Segmented Tabs: Subscriptions vs For You */
+.shorts-pill-tabs {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 2px 4px;
+}
+
+.shorts-tab-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+
+.shorts-tab-btn.active {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.tab-red-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #ff0033;
+  box-shadow: 0 0 8px #ff0033;
+}
+
+/* 2. SCROLL FEED */
+.shorts-scroll-feed {
   width: 100%;
-  max-width: 450px;
   height: 100%;
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  /* Hide scrollbar */
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.shorts-scroll-container::-webkit-scrollbar {
-  display: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.no-shorts {
+.short-slide-card {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: #000000;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
-  height: 100%;
-  color: var(--yt-text-primary);
-  text-align: center;
+  justify-content: center;
 }
 
-.short-video-container {
+.short-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.short-video-fallback {
   position: relative;
   width: 100%;
   height: 100%;
-  scroll-snap-align: start;
-  background-color: #000;
   display: flex;
-  justify-content: center;
   align-items: center;
-  border-radius: 12px;
-  margin-bottom: 20px; /* small gap between shorts if needed, but usually 0 for seamless */
-  overflow: hidden;
-  animation: fade-in 0.5s var(--yt-apple-easing) both;
-}
-.shorts-scroll-container .short-video-container {
-  margin-bottom: 0;
-  border-radius: 0; /* Full bleed edge to edge */
+  justify-content: center;
 }
 
-.short-video-player {
+.short-bg-fallback-img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* This makes 16:9 fill the 9:16 screen like TikTok! */
-  animation: shorts-kenburns 14s ease-in-out infinite alternate;
+  object-fit: cover;
 }
 
-@keyframes shorts-kenburns {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.06); }
-}
-
-.short-play-button {
+.fallback-error-text {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 60px;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  pointer-events: none;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  animation: shorts-play-pulse 2.2s var(--yt-apple-easing) infinite;
-  box-shadow: 0 0 30px rgba(255, 0, 51, 0.35);
 }
 
-@keyframes shorts-play-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 51, 0.25); transform: translate(-50%, -50%) scale(1); }
-  50% { box-shadow: 0 0 40px rgba(255, 0, 51, 0.5); transform: translate(-50%, -50%) scale(1.06); }
-}
-
-.short-info-overlay {
+/* Scrims */
+.short-scrim-top {
   position: absolute;
-  bottom: 20px;
-  left: 15px;
-  width: calc(100% - 80px);
-  color: white;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
   pointer-events: none;
-  animation: fade-in-up 0.6s var(--yt-apple-easing) 0.2s both;
 }
 
-.short-author {
+.short-scrim-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 280px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.6) 45%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Double-tap Heart Animation */
+.double-tap-heart {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.short-center-pause-indicator {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* 3. RIGHT ACTION RAIL */
+.short-action-rail {
+  position: absolute;
+  right: 12px;
+  bottom: 96px;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.rail-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.rail-action-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.rail-action-btn:active {
+  transform: scale(0.88);
+}
+
+.rail-action-btn span {
+  font-size: 24px !important;
+}
+
+.rail-btn-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* Spinning Vinyl Record for Audio */
+.sound-vinyl-wrapper {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ff0033 0%, rgba(255, 255, 255, 0.4) 100%);
+  box-shadow: 0 0 14px rgba(255, 0, 51, 0.5);
+}
+
+.spinning-vinyl-disc {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: spin-vinyl 6s linear infinite;
+}
+
+@keyframes spin-vinyl {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vinyl-groove {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vinyl-center {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #ff0033;
+}
+
+.vinyl-equalizer-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 4. BOTTOM CREATOR & METADATA OVERLAY */
+.short-bottom-metadata {
+  position: absolute;
+  left: 14px;
+  right: 76px;
+  bottom: 74px;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.short-creator-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
 }
 
-.short-author img {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  transition: transform 0.4s var(--yt-bounce-easing), border-color 0.3s ease;
+.creator-avatar-ring {
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  padding: 2px;
+  background: linear-gradient(135deg, #ff0033 0%, #ff5357 100%);
+  box-shadow: 0 0 10px rgba(255, 0, 51, 0.5);
+  flex-shrink: 0;
 }
 
-.short-author img:hover {
-  transform: scale(1.12);
-  border-color: var(--yt-accent);
+.creator-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+  display: block;
 }
 
-.short-author span {
-  font-weight: 600;
-  font-size: 15px;
+.creator-names {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
-.short-title {
+.creator-handle {
   font-size: 14px;
-  font-weight: 400;
-  margin: 0 0 5px 0;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-.short-description {
-  font-size: 13px;
+.verified-badge {
+  font-size: 14px !important;
+  color: #3ea6ff;
+}
+
+.short-subscribe-pill {
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #ff0033;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 12px rgba(255, 0, 51, 0.5);
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.short-subscribe-pill:active {
+  transform: scale(0.92);
+}
+
+.short-subscribe-pill.subscribed {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.short-title-container {
+  max-width: 100%;
+}
+
+.short-text-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #ffffff;
   margin: 0;
-  opacity: 0.9;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
-.short-actions {
-  position: absolute;
-  bottom: 20px;
-  right: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  align-items: center;
-  animation: fade-in-up 0.6s var(--yt-apple-easing) 0.35s both;
-}
-
-.short-action-btn {
-  background: none;
-  border: none;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-  transition: transform 0.25s var(--yt-bounce-easing);
-}
-
-.short-action-btn:hover {
-  transform: translateY(-2px) scale(1.1);
-}
-
-.short-action-btn:active {
-  transform: scale(0.85);
-}
-
-.short-action-btn .icon {
-  font-size: 28px;
-  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.5));
-  transition: transform 0.35s var(--yt-bounce-easing);
-}
-
-.short-action-btn:hover .icon {
-  transform: scale(1.15) translateY(-2px);
-}
-
-.short-action-btn .count,
-.short-action-btn .text {
-  font-size: 12px;
+.hashtag-accent {
+  color: #9ccaff;
   font-weight: 600;
-  transition: color 0.3s ease;
 }
 
-.short-action-btn:hover .count,
-.short-action-btn:hover .text {
-  color: var(--yt-accent-soft);
+/* Audio Marquee Ticker */
+.short-audio-ticker {
+  display: inline-flex;
+  align-items: center;
+  max-width: 250px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 12px;
+  overflow: hidden;
+  gap: 6px;
 }
 
-.short-avatar-bottom img {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  border: 2px solid white;
-  transition: transform 0.4s var(--yt-bounce-easing), box-shadow 0.4s var(--yt-apple-easing);
+.music-note-icon {
+  font-size: 14px !important;
+  color: #ff0033;
+  flex-shrink: 0;
 }
 
-.short-avatar-bottom img:hover {
-  transform: scale(1.1);
-  box-shadow: 0 0 16px rgba(255, 0, 51, 0.5);
+.marquee-viewport {
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
 }
 
+.marquee-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  animation: marquee-scroll 12s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-dot {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.audio-wave-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.wave-bar {
+  width: 2px;
+  background: #ff0033;
+  border-radius: 2px;
+  animation: wave-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.bar-1 { height: 6px; animation-delay: 0.1s; }
+.bar-2 { height: 11px; animation-delay: 0.25s; }
+.bar-3 { height: 7px; animation-delay: 0.4s; }
+
+@keyframes wave-pulse {
+  from { height: 3px; }
+  to { height: 12px; }
+}
+
+/* 5. GLOWING CRIMSON SCRUBBER PROGRESS LINE */
+.short-scrubber-track {
+  position: absolute;
+  bottom: 64px;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 58;
+}
+
+.short-scrubber-fill {
+  height: 100%;
+  background: #ff0033;
+  box-shadow: 0 0 10px #ff0033;
+  transition: width 0.1s linear;
+}
+
+.no-shorts-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #ffffff;
+  text-align: center;
+  padding: 24px;
+}

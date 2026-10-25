@@ -6,6 +6,7 @@ import { getCookie } from '@/utils/cookies';
 import { initSmoothScroll } from '@/utils/smoothScroll';
 import { getApiBaseUrl } from '@/config';
 import MobileBottomNav from '@/components/MobileBottomNav/MobileBottomNav';
+import '../index.css';
 import '../App.css';
 
 export default function RootLayout({
@@ -78,11 +79,21 @@ export default function RootLayout({
   const embedProxyUrl = `${API_BASE_URL}/videos/proxy/youtube-embed-proxy`;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){
+  window.exports = window.exports || {};
+  window.module = window.module || { exports: window.exports };
+  var d = document.documentElement;
+  d.setAttribute('data-theme', 'dark');
+  d.classList.add('dark');
+  document.body && document.body.setAttribute('data-theme', 'dark');
   var d = document.documentElement;
   var ua = navigator.userAgent;
   var isPhone = /Android|iPhone|iPod|iPad|Windows Phone|Mobile|Opera Mini|IEMobile/i.test(ua) || (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth, window.innerHeight) < 768);
@@ -95,7 +106,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body suppressHydrationWarning>
+      <body className="dark" data-theme="dark" suppressHydrationWarning>
         <div className="App">
           {children}
           <MobileBottomNav />

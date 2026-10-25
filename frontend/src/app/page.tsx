@@ -4,11 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar/Navbar';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import VideoCard, { VideoCardSkeleton } from '@/components/VideoCard/VideoCard';
+import CreatorStories from '@/components/CreatorStories/CreatorStories';
+import ShortsShelf from '@/components/ShortsShelf/ShortsShelf';
 import { categories } from '@/data/dummyData';
 import { apiClient } from '@/utils/api';
 import useVideoStore from '@/store/videoStore';
 import { getGuestId } from '@/utils/analytics';
 import { initialFeed } from '@/data/initialFeed';
+import { prewarmVideos } from '@/utils/clientStream';
 import '@/pages/Home.css';
 
 const Home = () => {
@@ -83,7 +86,7 @@ const Home = () => {
   // limited hai aur in-flight dedupe share karta hai player ke saath.
   useEffect(() => {
     if (videos.length > 0) {
-      prewarmVideos(videos, 12, 3);
+      if (typeof prewarmVideos === 'function') { prewarmVideos(videos, 12, 3); }
     }
   }, [videos]);
 
@@ -199,6 +202,16 @@ const Home = () => {
       <Sidebar isOpen={sidebarOpen} />
       
       <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        <CreatorStories
+          onSelectCreator={(name) => {
+            if (homeCategory === name) {
+              setHomeCategory('All');
+            } else {
+              setHomeCategory(name);
+            }
+          }}
+          activeCreator={homeCategory}
+        />
         {showHero && heroVideo && (
           <div className="hero-carousel" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
             <div className="hero-slides">
@@ -278,8 +291,11 @@ const Home = () => {
           {loading ? (
             Array(8).fill(null).map((_, i) => <VideoCardSkeleton key={i} />)
           ) : (
-            filteredVideos.map((video) => (
-              <VideoCard key={video.id} video={video} />
+            filteredVideos.map((video, idx) => (
+              <React.Fragment key={video.id}>
+                <VideoCard video={video} />
+                {idx === 2 && <div style={{ gridColumn: '1 / -1' }}><ShortsShelf /></div>}
+              </React.Fragment>
             ))
           )}
         </div>

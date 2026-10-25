@@ -1,0 +1,89 @@
+/* Creator Stories / Channel Reels Row - Mobile OLED Styling */
+.creator-stories-container {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 12px 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #000000;
+  -webkit-overflow-scrolling: touch;
+}
+
+.creator-stories-track {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: max-content;
+}
+
+.creator-story-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #ffffff;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.creator-story-item:active {
+  transform: scale(0.92);
+}
+
+.story-ring {
+  padding: 2.5px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.25s ease;
+}
+
+.story-ring.ring-glow {
+  background: linear-gradient(135deg, #ff0033 0%, #ff5357 50%, #ffb4aa 100%);
+  box-shadow: 0 0 12px rgba(255, 0, 51, 0.4);
+}
+
+.story-ring.ring-seen {
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 0.75;
+}
+
+.story-avatar-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 9999px;
+  padding: 2px;
+  background: #000000;
+  overflow: hidden;
+}
+
+.story-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+  display: block;
+}
+
+.story-name {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 62px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creator-story-item.active-selected .story-name {
+  color: #ff0033;
+  font-weight: 700;
+}

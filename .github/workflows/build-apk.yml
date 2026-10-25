@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Next.js Static Web Bundle
         working-directory: frontend
-        run: npx next build
+        run: CAPACITOR_BUILD=true npx next build
 
       - name: Sync Capacitor Android
         working-directory: frontend

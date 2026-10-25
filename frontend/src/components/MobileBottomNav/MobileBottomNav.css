@@ -1,88 +1,140 @@
-﻿/* Mobile bottom navigation â€” YouTube app style. Only visible on phones. */
+/* Floating Frosted Bottom Navigation Dock - Stitch OLED Mobile Spec */
 .mb-nav {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px), (pointer: coarse) {
   .mb-nav {
     display: flex;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 56px;
-    background: var(--yt-glass-bg);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-top: 1px solid var(--yt-glass-border);
-    z-index: 999;
-    justify-content: space-around;
-    align-items: stretch;
-    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100;
+    background: rgba(10, 10, 10, 0.88);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: max(env(safe-area-inset-bottom, 12px), 8px);
+    justify-content: center;
   }
 
-  .mb-nav-item {
+  .mb-nav-inner {
+    width: 100%;
+    max-width: 480px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 8px;
+  }
+
+  .mb-nav-tab {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 3px;
     flex: 1;
-    color: var(--yt-text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     text-decoration: none;
-    min-width: 0;
-    transition: color 0.25s var(--yt-apple-easing), transform 0.2s var(--yt-bounce-easing);
+    padding: 4px 0;
+    transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease;
+    outline: none;
   }
 
-  .mb-nav-item:active {
+  .mb-nav-tab:active {
     transform: scale(0.9);
   }
 
-  .mb-nav-item.active {
-    color: var(--yt-accent);
+  .mb-nav-tab.active {
+    color: #ffffff;
   }
 
-  .mb-nav-item.active .mb-nav-icon {
-    transform: translateY(-1px) scale(1.08);
-    filter: drop-shadow(0 2px 6px rgba(255, 0, 51, 0.45));
-  }
-
-  .mb-nav-icon {
-    display: flex;
-    transition: transform 0.25s var(--yt-bounce-easing), filter 0.25s var(--yt-apple-easing);
-  }
-
-  .mb-nav-label {
-    font-size: 10.5px;
-    font-weight: 500;
-    line-height: 1;
-  }
-
-  .mb-nav-create {
+  .mb-tab-icon-wrap {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 24px;
-    border-radius: 8px;
-    background: var(--yt-text-primary);
-    color: var(--yt-bg-main);
-    margin-top: -2px;
   }
 
-  .mb-nav-create svg {
-    margin: 0;
+  .mb-tab-icon {
+    font-size: 24px !important;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
   }
 
-  /* Content needs bottom padding so nav doesn't cover the last row */
-  body {
-    padding-bottom: 56px;
+  .mb-nav-tab.active .mb-tab-icon {
+    color: #ff0033;
+    filter: drop-shadow(0 0 8px rgba(255, 0, 51, 0.65));
+    transform: scale(1.08);
   }
-}
 
-@media (max-width: 400px) {
-  .mb-nav-label {
+  .shorts-active-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: #ff0033;
+    box-shadow: 0 0 6px #ff0033;
+  }
+
+  .mb-tab-label {
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .mb-nav-tab.active .mb-tab-label {
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  /* Center Elevated Circular Red Create (+) Button */
+  .mb-nav-create-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    margin-top: -14px;
+    flex: 1;
+    outline: none;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .mb-nav-create-btn:active {
+    transform: scale(0.88);
+  }
+
+  .create-plus-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 9999px;
+    background: #ff0033;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 20px rgba(255, 0, 51, 0.55), 0 4px 12px rgba(0, 0, 0, 0.6);
+  }
+
+  .plus-icon {
+    font-size: 26px !important;
+    font-weight: 700 !important;
+  }
+
+  .mb-create-label {
     font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 3px;
+  }
+
+  body {
+    padding-bottom: 74px !important;
   }
 }
-
