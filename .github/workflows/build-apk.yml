@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Next.js Static Web Bundle
         working-directory: frontend
-        run: CAPACITOR_BUILD=true npx next build
+        run: CAPACITOR_BUILD=true NEXT_PUBLIC_IS_CAPACITOR=true NEXT_PUBLIC_API_URL=https://kiro-youtube-app-backend.onrender.com/api npx next build
 
       - name: Sync Capacitor Android
         working-directory: frontend
@@ -72,3 +72,80 @@ jobs:
           files: frontend/android/app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-emulator:
+    name: Run Android Emulator & Capture Live Screenshots
+    needs: build-apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Enable KVM Virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || true
+
+      - name: Download Built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: YouTubeClone-Debug-APK
+          path: apk_folder
+
+      - name: Run Android Emulator and Test APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          emulator-options: -no-window -no-audio -gpu swiftshader_indirect
+          script: |
+            echo "Waiting for Android device to boot..."
+            adb wait-for-device
+            
+            echo "Installing APK..."
+            adb install apk_folder/*.apk
+            
+            echo "Launching App com.kiro.youtube..."
+            adb shell monkey -p com.kiro.youtube -c android.intent.category.LAUNCHER 1
+            
+            echo "Waiting 20 seconds for live feed from Firebase RTDB to render..."
+            sleep 20
+            
+            echo "Capturing Live Home Feed Screenshot..."
+            adb exec-out screencap -p > emulator_home_screenshot.png
+            
+            echo "Simulating user scroll to test video feed lazy-load..."
+            adb shell input swipe 500 1600 500 400 400
+            sleep 6
+            adb exec-out screencap -p > emulator_scrolled_screenshot.png
+            
+            echo "Tapping Shorts icon..."
+            adb shell input tap 360 2150 || true
+            sleep 6
+            adb exec-out screencap -p > emulator_shorts_screenshot.png
+            ls -lh emulator_*.png
+
+      - name: Upload Screenshots as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-emulator-screenshots
+          path: emulator_*.png
+
+      - name: Commit Screenshots to Repository for Live Preview
+        run: |
+          mkdir -p docs/screenshots
+          cp emulator_*.png docs/screenshots/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/
+          git commit -m "docs: update live Android emulator screenshots [skip ci]" || true
+          git push origin main || true

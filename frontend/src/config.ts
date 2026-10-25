@@ -1,34 +1,45 @@
 // Central API base config — saari jagah isi ko import karo.
-//
-// Priority:
-//   1. Mobile Capacitor / Native App -> Live Render backend
-//   2. Local Browser Dev (localhost:3000) -> Local backend (localhost:5000)
-//   3. Production Web -> NEXT_PUBLIC_API_URL or live Render backend
+import { Capacitor } from '@capacitor/core';
+
+const RENDER_BACKEND = 'https://kiro-youtube-app-backend.onrender.com/api';
 
 const getApiBase = () => {
+  // If explicitly building for Capacitor / APK
+  if (process.env.NEXT_PUBLIC_IS_CAPACITOR === 'true' || process.env.CAPACITOR_BUILD === 'true') {
+    return process.env.NEXT_PUBLIC_API_URL || RENDER_BACKEND;
+  }
+
   if (typeof window !== 'undefined') {
+    // 1. Native mobile app check via Capacitor SDK
+    try {
+      if (Capacitor.isNativePlatform()) {
+        return process.env.NEXT_PUBLIC_API_URL || RENDER_BACKEND;
+      }
+    } catch {}
+
     const { hostname, protocol } = window.location;
-    
-    // Check if running inside mobile Capacitor App (Android / iOS)
-    const isCapacitor = protocol === 'capacitor:' || (window as any).Capacitor !== undefined;
-    if (isCapacitor) {
-      return process.env.NEXT_PUBLIC_API_URL || 'https://kiro-youtube-app-backend.onrender.com/api';
+    const ua = navigator.userAgent || '';
+    const isAndroidOrWebView = ua.includes('Android') || ua.includes('wv') || ua.includes('Capacitor');
+
+    // 2. Android WebView or Capacitor scheme
+    if (protocol === 'capacitor:' || protocol === 'ionic:' || isAndroidOrWebView) {
+      return process.env.NEXT_PUBLIC_API_URL || RENDER_BACKEND;
     }
 
-    // Local development in browser
+    // 3. Local desktop browser development
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-    if (isLocal) {
+    if (isLocal && !isAndroidOrWebView) {
       return 'http://localhost:5000/api';
     }
-    
-    // In production browser, use NEXT_PUBLIC_API_URL if configured
+
+    // 4. Production web
     if (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes('localhost')) {
       return process.env.NEXT_PUBLIC_API_URL;
     }
-    return 'https://kiro-youtube-app-backend.onrender.com/api';
+    return RENDER_BACKEND;
   }
 
-  return process.env.NEXT_PUBLIC_API_URL || 'https://kiro-youtube-app-backend.onrender.com/api';
+  return process.env.NEXT_PUBLIC_API_URL || RENDER_BACKEND;
 };
 
 export const API_BASE_URL = getApiBase();
