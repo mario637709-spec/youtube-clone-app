@@ -60,6 +60,15 @@ const formatDoc = (doc) => {
 const getVideos = async (query = {}) => {
   const { category } = query;
 
+  if (typeof rtdb.getFeedVideos === 'function') {
+    try {
+      const rtdbVideos = await rtdb.getFeedVideos({ category, page: 1, limit: 100 });
+      if (rtdbVideos && rtdbVideos.length > 0) return rtdbVideos;
+    } catch (e) {
+      console.warn('[dbFirestore] RTDB getFeedVideos miss:', e.message);
+    }
+  }
+
   if (isRealFirebase && isFirestoreUsable()) {
     try {
       let ref = db.collection('videos');
@@ -102,12 +111,28 @@ const getVideos = async (query = {}) => {
 
 // 1.1 Fetch Shorts videos dedicated
 const getShortsVideos = async () => {
+  if (typeof rtdb.getShortsFeed === 'function') {
+    try {
+      const rtdbShorts = await rtdb.getShortsFeed({ page: 1, limit: 100 });
+      if (rtdbShorts && rtdbShorts.length > 0) return rtdbShorts;
+    } catch (e) {
+      console.warn('[dbFirestore] RTDB getShortsFeed miss:', e.message);
+    }
+  }
   const shortsObj = readShortsVideos();
   return Object.values(shortsObj);
 };
 
 // 1.2 Fetch Long format videos dedicated
 const getLongVideos = async () => {
+  if (typeof rtdb.getFeedVideos === 'function') {
+    try {
+      const rtdbLong = await rtdb.getFeedVideos({ page: 1, limit: 100 });
+      if (rtdbLong && rtdbLong.length > 0) return rtdbLong;
+    } catch (e) {
+      console.warn('[dbFirestore] RTDB getLongVideos miss:', e.message);
+    }
+  }
   const longObj = readLongVideos();
   return Object.values(longObj);
 };
