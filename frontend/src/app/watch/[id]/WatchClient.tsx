@@ -1,7 +1,7 @@
 "use client";
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar/Navbar';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import VideoPlayer from '@/components/VideoPlayer/VideoPlayer';
@@ -19,7 +19,11 @@ export function generateStaticParams() {
 }
 
 const Watch = () => {
-  const { id } = useParams();
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const id = (params && typeof params.id === 'string' && params.id)
+    ? params.id
+    : (searchParams?.get('v') || searchParams?.get('id') || '');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [video, setVideo] = useState(null);
   const [relatedVideos, setRelatedVideos] = useState([]);

@@ -150,7 +150,7 @@ const Profile = () => {
                   ) : (
                     <div className="uploads-list" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {analytics.videos.map(v => (
-                        <div key={v.id} className="uploaded-video-item" onClick={() => router.push(`/watch/${v.id}`)} style={{ display: 'flex', gap: '16px', background: 'var(--yt-bg-card)', padding: '12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--yt-border-color)' }}>
+                        <div key={v.id} className="uploaded-video-item" onClick={() => router.push(`/watch?v=${v.id}`)} style={{ display: 'flex', gap: '16px', background: 'var(--yt-bg-card)', padding: '12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--yt-border-color)' }}>
                           <img src={v.thumbnail} alt={v.title} style={{ width: '120px', height: '68px', borderRadius: '4px', objectFit: 'cover' }} />
                           <div style={{ flex: 1 }}>
                             <h4 style={{ color: 'var(--yt-text-primary)', fontSize: '16px', marginBottom: '4px' }}>{v.title}</h4>

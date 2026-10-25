@@ -117,35 +117,64 @@ jobs:
             echo "Launching App com.kiro.youtube..."
             adb shell monkey -p com.kiro.youtube -c android.intent.category.LAUNCHER 1
             
-            echo "Waiting 20 seconds for live feed from Firebase RTDB to render..."
-            sleep 20
+            echo "Waiting 22 seconds for live feed from Firebase RTDB to render..."
+            sleep 22
             
-            echo "Capturing Live Home Feed Screenshot..."
+            echo "1. Capturing Live Home Feed Screenshot..."
             adb exec-out screencap -p > emulator_home_screenshot.png
             
-            echo "Simulating user scroll to test video feed lazy-load..."
+            echo "2. Simulating user scroll to test video feed lazy-load..."
             adb shell input swipe 500 1600 500 400 400
             sleep 6
             adb exec-out screencap -p > emulator_scrolled_screenshot.png
-            
-            echo "Tapping Shorts icon..."
+
+            echo "3. Tapping first visible video card to navigate to Watch Page..."
+            adb shell input tap 540 850
+            sleep 8
+            adb exec-out screencap -p > emulator_watch_opened.png
+
+            echo "4. Tapping video player center to trigger/unpause playback..."
+            adb shell input tap 540 450
+            echo "Waiting 6 seconds while video streams from Google CDN..."
+            sleep 6
+            adb exec-out screencap -p > emulator_video_playing_1.png
+
+            echo "5. Waiting 7 seconds for playback time progression..."
+            sleep 7
+            adb exec-out screencap -p > emulator_video_playing_2.png
+
+            echo "6. Tapping player to show progress scrubber timeline and playback controls..."
+            adb shell input tap 540 450
+            sleep 1
+            adb exec-out screencap -p > emulator_video_controls.png
+
+            echo "7. Capturing logcat media stream logs..."
+            adb logcat -d | grep -E "chromium|MediaPlayer|NuPlayer|MediaCodec|stream" | tail -n 80 > emulator_playback_logs.txt || true
+
+            echo "8. Navigating back and tapping Shorts..."
+            adb shell input keyevent 4 || true
+            sleep 3
             adb shell input tap 360 2150 || true
             sleep 6
             adb exec-out screencap -p > emulator_shorts_screenshot.png
+
             ls -lh emulator_*.png
 
       - name: Upload Screenshots as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: live-emulator-screenshots
-          path: emulator_*.png
+          path: |
+            emulator_*.png
+            emulator_playback_logs.txt
 
       - name: Commit Screenshots to Repository for Live Preview
         run: |
           mkdir -p docs/screenshots
           cp emulator_*.png docs/screenshots/
+          cp emulator_playback_logs.txt docs/screenshots/ || true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/screenshots/
-          git commit -m "docs: update live Android emulator screenshots [skip ci]" || true
+          git commit -m "docs: update live Android emulator video playback screenshots [skip ci]" || true
           git push origin main || true

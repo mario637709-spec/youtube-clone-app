@@ -22,7 +22,7 @@ const VideoCard = ({ video }) => {
 
   const handleVideoClick = () => {
     // If pending and not live, we still navigate but the player will show the custom uploader progress loader
-    router.push(`/watch/${video.id}`);
+    router.push(`/watch?v=${video.id}`);
   };
 
   // 2026-08-14: Playback speed fix — pre-warm the client-side stream

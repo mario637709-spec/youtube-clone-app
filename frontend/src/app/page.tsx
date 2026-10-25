@@ -242,7 +242,7 @@ const Home = () => {
                 <div
                   key={v.id}
                   className={`hero-slide ${i === heroIndex ? 'active' : ''}`}
-                  onClick={() => window.location.assign(`/watch/${v.id}`)}
+                  onClick={() => window.location.assign(`/watch?v=${v.id}`)}
                 >
                   <div className="hero-backdrop">
                     <img
