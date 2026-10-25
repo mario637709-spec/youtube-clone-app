@@ -1,0 +1,77 @@
+name: Test APK on Android Emulator
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/emulator-test.yml'
+
+jobs:
+  test-emulator:
+    name: Run Android Emulator & Capture Live Screenshots
+    runs-on: macos-13
+    timeout-minutes: 20
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Latest APK from GitHub Release
+        run: |
+          echo "Downloading app-debug.apk from Release v1.0.0-12..."
+          curl -sSL -o app-debug.apk "https://github.com/mario637709-spec/youtube-clone-app/releases/download/v1.0.0-12/app-debug.apk"
+          ls -lh app-debug.apk
+
+      - name: Run Android Emulator and Test APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          emulator-options: -no-window -no-audio -gpu swiftshader_indirect
+          script: |
+            echo "Waiting for Android device to boot..."
+            adb wait-for-device
+            
+            echo "Installing APK..."
+            adb install app-debug.apk
+            
+            echo "Launching App com.kiro.youtube..."
+            adb shell monkey -p com.kiro.youtube -c android.intent.category.LAUNCHER 1
+            
+            echo "Waiting 15 seconds for feed to load from Firebase RTDB..."
+            sleep 15
+            
+            echo "Capturing Live Home Feed Screenshot..."
+            adb exec-out screencap -p > emulator_home_screenshot.png
+            
+            echo "Simulating user scroll to test video feed lazy-load..."
+            adb shell input swipe 500 1600 500 400 400
+            sleep 5
+            adb exec-out screencap -p > emulator_scrolled_screenshot.png
+            
+            echo "Tapping Shorts icon..."
+            adb shell input tap 360 2150 || true
+            sleep 6
+            adb exec-out screencap -p > emulator_shorts_screenshot.png
+            ls -lh emulator_*.png
+
+      - name: Upload Screenshots as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-emulator-screenshots
+          path: emulator_*.png
+
+      - name: Commit Screenshots to Repository for Live Preview
+        run: |
+          mkdir -p docs/screenshots
+          cp emulator_*.png docs/screenshots/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/
+          git commit -m "docs: add live Android emulator screenshots [skip ci]" || true
+          git push origin main || true
