@@ -23,9 +23,9 @@ const Shorts = () => {
         const API_BASE_URL = getApiBaseUrl();
         const res = await axios.get(`${API_BASE_URL}/videos/shorts`, { params: { page: pageNum, limit: 20 } });
         const data = res.data;
-        const newShorts = data.videos || [];
+        const newShorts = Array.isArray(data) ? data : (data?.videos || []);
         setShorts(prev => pageNum === 1 ? newShorts : [...prev, ...newShorts]);
-        setHasMore(!!data.hasMore);
+        setHasMore(Array.isArray(data) ? data.length >= 20 : !!data?.hasMore);
       } catch (err) {
         console.error('Error fetching shorts:', err);
       } finally {
@@ -57,9 +57,9 @@ const Shorts = () => {
     axios.get(`${API_BASE_URL}/videos/shorts`, { params: { page: pageNum, limit: 20 } })
       .then(res => {
         const data = res.data;
-        const newShorts = data.videos || [];
+        const newShorts = Array.isArray(data) ? data : (data?.videos || []);
         setShorts(prev => [...prev, ...newShorts]);
-        setHasMore(!!data.hasMore);
+        setHasMore(Array.isArray(data) ? data.length >= 20 : !!data?.hasMore);
       })
       .catch(err => console.error('Error fetching more shorts:', err));
   };

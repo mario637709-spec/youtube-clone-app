@@ -1,0 +1,21 @@
+{
+  "ignore": [
+    "data/*",
+    "data/db.json",
+    "data/db.json.tmp",
+    "data\\*",
+    "data\\db.json",
+    "data\\db.json.tmp",
+    "**/data/**",
+    "**\\data\\**",
+    "videos",
+    "images",
+    "node_modules/*",
+    "tmp/*",
+    "tmp\\*",
+    "**/tmp/**",
+    "**\\tmp\\**",
+    "*.log",
+    "debug_screenshot*"
+  ]
+}

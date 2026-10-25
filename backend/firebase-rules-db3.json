@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "channel_videos": { ".read": true, ".write": false },
+    "videos": { ".read": true, ".write": false },
+    "comments": { ".read": true, ".write": false },
+    "meta": { ".read": true, ".write": false }
+  }
+}

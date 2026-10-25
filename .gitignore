@@ -26,7 +26,18 @@ images/
 uploads/
 
 # Exclude backend entirely (backend runs on server/Render, not inside mobile APK)
-backend/
+backend/node_modules/
+backend/data/*.tmp*
+backend/data/*.log*
+backend/data/*.txt
+backend/data/*.jsonl
+backend/data/db_worker*.json
+backend/data/db_long.json
+backend/data/db_shorts.json
+backend/logs/
+backend/tmp/
+backend/*.log
+backend/config/firebaseServiceAccount.json
 /src/
 errors/
 SETUP.md
@@ -47,3 +58,8 @@ Procfile
 # Misc
 .DS_Store
 Thumbs.db
+
+backend/utils/*.png
+backend/data/player-cache/
+
+backend/config/credentials.json

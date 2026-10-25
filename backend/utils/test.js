@@ -1,0 +1,1 @@
+const axios = require('axios'); const agent = require('./youtubeStreamAgent'); axios.get('https://www.youtube.com/watch?v=muLA_Y-1iR0').then(res => { const match = res.data.match(/"jsUrl":"([^"]+)"/); if(match){ const jsUrl = 'https://www.youtube.com' + match[1]; console.log('Found JS:', jsUrl); agent.decryptSignature('test', 'test', jsUrl).then(console.log); } })

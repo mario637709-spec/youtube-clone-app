@@ -1,0 +1,43 @@
+{
+  "rules": {
+    "videos": { ".read": true, ".write": false },
+    "cards": { ".read": true, ".write": false },
+    "feed": { ".read": true, ".write": false },
+    "counters": { ".read": true, ".write": false },
+    "channels": { ".read": true, ".write": false },
+    "channels_by_category": { ".read": true, ".write": false },
+    "channel_registry": { ".read": false, ".write": false },
+    "video_index": { ".read": false, ".write": false },
+    "algo": { ".read": false, ".write": false },
+    "config": { ".read": true, ".write": false },
+    "meta": { ".read": true, ".write": false },
+    "trending": { ".read": true, ".write": false },
+    "users": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "user_likes": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "user_subs": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "watch_history": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "guest_profiles": {
+      "$gid": { ".read": false, ".write": false }
+    },
+    "progress": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "notifications": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "notif_queue": { ".read": false, ".write": false },
+    "devices": { ".read": false, ".write": false },
+    "uploads": { ".read": false, ".write": false },
+    "presence": { ".read": "auth != null", ".write": false },
+    "live": { ".read": "auth != null", ".write": false },
+    "security": { ".read": false, ".write": false }
+  }
+}

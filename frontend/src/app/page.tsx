@@ -56,8 +56,20 @@ const Home = () => {
       setPage(1);
       setHasMore(true);
       try {
-        const data = await apiClient.get(`/feed?category=${encodeURIComponent(homeCategory)}&guestId=${getGuestId()}&page=1&limit=20`);
-        const list = extractList(data);
+        let data = null;
+        let list = [];
+        try {
+          data = await apiClient.get(`/feed?category=${encodeURIComponent(homeCategory)}&guestId=${getGuestId()}&page=1&limit=20`);
+          list = extractList(data);
+        } catch (feedErr) {
+          console.warn('/feed endpoint failed, trying /videos directly:', feedErr?.message || feedErr);
+        }
+
+        if (!list || list.length === 0) {
+          data = await apiClient.get(`/videos?category=${encodeURIComponent(homeCategory)}&page=1&limit=20`);
+          list = extractList(data);
+        }
+
         if (list && list.length > 0) {
           setVideos(list);
           applyHasMore(data, list);
@@ -104,11 +116,22 @@ const Home = () => {
     lastLoadAtRef.current = Date.now();
     const nextPage = pageRef.current + 1;
     try {
-      const data = await apiClient.get(`/feed?category=${encodeURIComponent(homeCategory)}&guestId=${getGuestId()}&page=${nextPage}&limit=20`);
-      const list = extractList(data);
-      if (list.length > 0) {
+      let data = null;
+      let list = [];
+      try {
+        data = await apiClient.get(`/feed?category=${encodeURIComponent(homeCategory)}&guestId=${getGuestId()}&page=${nextPage}&limit=20`);
+        list = extractList(data);
+      } catch (feedErr) {
+        console.warn('/feed loadMore failed, trying /videos:', feedErr?.message || feedErr);
+      }
+
+      if (!list || list.length === 0) {
+        data = await apiClient.get(`/videos?category=${encodeURIComponent(homeCategory)}&page=${nextPage}&limit=20`);
+        list = extractList(data);
+      }
+
+      if (list && list.length > 0) {
         setVideos(prev => {
-          // Deduplicate just in case
           const existingIds = new Set(prev.map(v => v.id));
           const newVideos = list.filter(v => !existingIds.has(v.id));
           return [...prev, ...newVideos];

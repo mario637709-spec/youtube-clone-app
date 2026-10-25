@@ -56,13 +56,14 @@ export default function ShortsShelf() {
       try {
         const API_BASE_URL = getApiBaseUrl();
         const res = await axios.get(`${API_BASE_URL}/videos/shorts`, { params: { page: 1, limit: 8 } });
-        const list = res.data?.videos || [];
+        const raw = res.data;
+        const list = Array.isArray(raw) ? raw : (raw?.videos || []);
         if (list.length > 0) {
           setShorts(
             list.map((item: any) => ({
               id: item.id || item.youtube_id,
               title: item.title,
-              thumbnail: item.thumbnail || (item.thumbnails && item.thumbnails[0]?.url),
+              thumbnail: item.thumbnail || (item.thumbnails && item.thumbnails[0]?.url) || `https://i.ytimg.com/vi/${item.youtube_id || item.id}/hqdefault.jpg`,
               views: typeof item.views === 'number' ? `${(item.views / 1000).toFixed(0)}K views` : item.views || '120K views',
               uploaderName: item.uploaderName || item.channel?.name || 'Creator',
             }))
