@@ -38,12 +38,20 @@ dotenv.config();
 // Connect to database
 connectDB();
 
-// Scan and ingest local videos
-runIngester();
-
-// Trigger the background worker to process any pending uploads from last session
-const youtubeWorker = require('./utils/youtubeWorker');
-youtubeWorker.triggerQueue();
+// Scan and ingest local videos (Local PC only)
+if (!process.env.RENDER && !process.env.VERCEL) {
+  try {
+    runIngester();
+  } catch (e) {
+    console.warn('[Ingester] Skipped:', e.message);
+  }
+  try {
+    const youtubeWorker = require('./utils/youtubeWorker');
+    youtubeWorker.triggerQueue();
+  } catch (e) {
+    console.warn('[Worker] Skipped:', e.message);
+  }
+}
 
 const app = express();
 
@@ -176,23 +184,25 @@ if (process.env.VERCEL) {
     // Boot warm-up (background): 543MB JSON parse + rank code paths ko
     // pehle request se pehle garam karo taaki pehla user 19s+ cold
     // feed na jhele. Non-blocking — server turant serve karta hai.
-    setTimeout(() => {
-      (async () => {
-        try {
-          console.log('[Warmup] Pre-loading video DB snapshot...');
-          const { readAllVideos } = require('./utils/dbJson');
-          const { rankFeed, setFeedCache } = require('./utils/recommendationEngine');
-          const { videos } = readAllVideos();
-          const list = Object.values(videos);
-          console.log(`[Warmup] DB ready: ${list.length} videos`);
-          const ranked = rankFeed(list, null);
-          setFeedCache('feed_global_all', ranked, 1800);
-          console.log('[Warmup] Rank paths warmed and feed_global_all primed');
-        } catch (err) {
-          console.error('[Warmup] failed:', err.message);
-        }
-      })();
-    }, 2000);
+    if (!process.env.RENDER && !process.env.VERCEL) {
+      setTimeout(() => {
+        (async () => {
+          try {
+            console.log('[Warmup] Pre-loading video DB snapshot...');
+            const { readAllVideos } = require('./utils/dbJson');
+            const { rankFeed, setFeedCache } = require('./utils/recommendationEngine');
+            const { videos } = readAllVideos();
+            const list = Object.values(videos);
+            console.log(`[Warmup] DB ready: ${list.length} videos`);
+            const ranked = rankFeed(list, null);
+            setFeedCache('feed_global_all', ranked, 1800);
+            console.log('[Warmup] Rank paths warmed and feed_global_all primed');
+          } catch (err) {
+            console.error('[Warmup] failed:', err.message);
+          }
+        })();
+      }, 2000);
+    }
     
     // Start the Self-Healing Microservice Agent
     const selfHealer = require('./jobs/selfHealer');
@@ -202,7 +212,7 @@ if (process.env.VERCEL) {
     const aiBrain = require('./aiBrain');
     let isSyncing = false;
 
-    const DISABLE_BG_AGENTS = process.env.DISABLE_BG_AGENTS === 'true';
+    const DISABLE_BG_AGENTS = process.env.DISABLE_BG_AGENTS === 'true' || !!process.env.RENDER || !!process.env.VERCEL;
 
     const runBackgroundSync = async () => {
       if (isSyncing) return;
