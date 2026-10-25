@@ -9,7 +9,7 @@ on:
 jobs:
   test-emulator:
     name: Run Android Emulator & Capture Live Screenshots
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
@@ -18,10 +18,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Enable KVM Virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || true
+
       - name: Download Latest APK from GitHub Release
         run: |
-          echo "Downloading app-debug.apk from Release v1.0.0-12..."
-          curl -sSL -o app-debug.apk "https://github.com/mario637709-spec/youtube-clone-app/releases/download/v1.0.0-12/app-debug.apk"
+          echo "Downloading app-debug.apk from Release v1.0.0-13..."
+          curl -sSL -o app-debug.apk "https://github.com/mario637709-spec/youtube-clone-app/releases/download/v1.0.0-13/app-debug.apk" || curl -sSL -o app-debug.apk "https://github.com/mario637709-spec/youtube-clone-app/releases/download/v1.0.0-12/app-debug.apk"
           ls -lh app-debug.apk
 
       - name: Run Android Emulator and Test APK
