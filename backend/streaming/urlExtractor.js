@@ -61,8 +61,13 @@ const cachedLookup = (hostname, options, callback) => {
     callback(err, address, fam);
   });
 };
-const extractorAgent = new https.Agent({ keepAlive: true, maxSockets: 100, lookup: cachedLookup });
-const extractorHttpAgent = new http.Agent({ keepAlive: true, maxSockets: 100, lookup: cachedLookup });
+const isCloudHost = !!process.env.RENDER || !!process.env.VERCEL;
+const extractorAgent = isCloudHost
+  ? new https.Agent({ keepAlive: true, maxSockets: 100 })
+  : new https.Agent({ keepAlive: true, maxSockets: 100, lookup: cachedLookup });
+const extractorHttpAgent = isCloudHost
+  ? new http.Agent({ keepAlive: true, maxSockets: 100 })
+  : new http.Agent({ keepAlive: true, maxSockets: 100, lookup: cachedLookup });
 const AXIOS_AGENTS = { httpsAgent: extractorAgent, httpAgent: extractorHttpAgent };
 
 // ─── InnerTube endpoint ─────────────────────────────────────────
@@ -484,16 +489,19 @@ const extractUrl = async (videoId, quality = 'auto', opts = {}) => {
     //    first (internal 4s endpoint timeout), fall back to the
     //    IOS/WEB race only if it fails.
     try {
-      // Parallel race: IOS resolves in ~1s, ANDROID_VR resolves in ~0.5s.
-      // Racing both in parallel eliminates the 6-second serial timeout delay!
+      // Prioritize IOS client first (resolves in ~300ms and returns direct formats without bot check)
       result = await withTimeout(
-        Promise.any([
-          extractViaIOSWithRetry(videoId, quality),
+        extractViaIOSWithRetry(videoId, quality),
+        3500,
+        'IOS primary extraction'
+      ).catch(async (iosErr) => {
+        console.warn('[URLExtractor] IOS extraction failed - trying ANDROID_VR fallback...');
+        return await withTimeout(
           extractViaAndroidVr(videoId, quality),
-        ]),
-        PRIMARY_RACE_TIMEOUT_MS,
-        'parallel primary extraction'
-      );
+          3000,
+          'ANDROID_VR extraction'
+        );
+      });
     } catch (primaryErr) {
       console.warn(`[URLExtractor] Primary parallel extraction failed — trying web embedded / ytdl: ${primaryErr.message}`);
       try {

@@ -1,8 +1,12 @@
 // Configure public DNS servers and prefer IPv4 to avoid local ISP DNS resolution failures and IPv6 connection timeouts
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
+if (!process.env.RENDER && !process.env.VERCEL) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+    if (dns.setDefaultResultOrder) {
+      dns.setDefaultResultOrder('ipv4first');
+    }
+  } catch (e) {}
 }
 const fs = require('fs');
 const path = require('path');

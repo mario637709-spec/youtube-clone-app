@@ -166,6 +166,20 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // 4-second safety timer: If video has not started playing within 4s, seamlessly switch to YouTube Iframe Embed
+  useEffect(() => {
+    if (!isPlaying && !hasError && ytId) {
+      const timer = setTimeout(() => {
+        if (!isPlaying && (!videoRef.current || videoRef.current.currentTime === 0)) {
+          console.warn('[VideoPlayer] Stream not playing after 4s — switching to iframe embed fallback');
+          setLoadingStream(false);
+          setHasError(true);
+        }
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isPlaying, hasError, ytId]);
+
   const playerConfigCacheRef = useRef(null); // { videoId: '', config: null }
   const decryptedUrlsCacheRef = useRef({}); // { quality: 'decryptedUrl' }
 
@@ -1675,14 +1689,14 @@ const handleError = () => {
 
           {hasError && ytId ? (
             <iframe
-              src={`https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1`}
+              src={`https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0`}
               title={video?.title || "Video Player"}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
-              style={{ width: '100%', height: '100%', border: 'none', position: 'absolute', top: 0, left: 0, zIndex: 10 }}
+              style={{ width: '100%', height: '100%', border: 'none', position: 'absolute', top: 0, left: 0, zIndex: 60 }}
             />
           ) : hasError ? (
-            <div className="video-error-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', background: '#000', position: 'absolute', top: 0, left: 0, width: '100%' }}>
+            <div className="video-error-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', background: '#000', position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 60 }}>
               <svg viewBox="0 0 24 24" width="48" height="48" style={{ marginBottom: '16px', color: '#aaa' }}>
                 <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
               </svg>
@@ -1690,7 +1704,7 @@ const handleError = () => {
             </div>
           ) : null}
           
-          {(isLoading || loadingStream) && (
+          {(isLoading || loadingStream) && !hasError && (
             <div className="video-loading-overlay">
               <div className="video-spinner"></div>
               <p style={{ margin: '12px 0 0 0', fontWeight: 500, fontSize: '14px' }}>Securing Stream...</p>

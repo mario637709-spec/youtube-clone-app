@@ -43,19 +43,13 @@ const { extractUrl, cachedLookup } = require('./urlExtractor');
 // `lookup: cachedLookup` (shared with urlExtractor) keeps DNS results
 // warm for 60s — on this flaky mobile hotspot a fresh getaddrinfo per
 // socket was failing intermittently with ENOTFOUND.
-const httpsAgent = new https.Agent({
-  keepAlive: true,
-  maxSockets: 500,          // Max 500 sockets to YouTube CDN
-  keepAliveMsecs: 30000,
-  freeSocketTimeout: 20000,
-  lookup: cachedLookup,
-});
-const httpAgent = new http.Agent({
-  keepAlive: true,
-  maxSockets: 500,
-  freeSocketTimeout: 20000,
-  lookup: cachedLookup,
-});
+const isCloudHosting = !!process.env.RENDER || !!process.env.VERCEL;
+const httpsAgent = isCloudHosting
+  ? new https.Agent({ keepAlive: true, maxSockets: 500, keepAliveMsecs: 30000, freeSocketTimeout: 20000 })
+  : new https.Agent({ keepAlive: true, maxSockets: 500, keepAliveMsecs: 30000, freeSocketTimeout: 20000, lookup: cachedLookup });
+const httpAgent = isCloudHosting
+  ? new http.Agent({ keepAlive: true, maxSockets: 500, freeSocketTimeout: 20000 })
+  : new http.Agent({ keepAlive: true, maxSockets: 500, freeSocketTimeout: 20000, lookup: cachedLookup });
 
 // ─── Active streams tracker (for monitoring) ─────────────────────
 const activeStreams = new Map(); // streamId → { videoId, startedAt, bytesSent }
