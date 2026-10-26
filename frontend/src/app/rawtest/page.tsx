@@ -8,7 +8,8 @@
 // direct browser se (CORS:*). VIDEO BYTES KABHI SERVER SE NAHI JATE.
 // ───────────────────────────────────────────────────────────────────
 import React, { useState } from 'react';
-import { Innertube } from 'youtubei.js';
+// import { Innertube } from 'youtubei.js';
+const Innertube = null;
 import { BotGuardClient } from 'bgutils-js/botguard';
 import { WebPoMinter } from 'bgutils-js/webpo';
 import { parseLooseJSON } from 'bgutils-js/utils';
