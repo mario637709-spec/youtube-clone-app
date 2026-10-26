@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar/Navbar';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import VideoCard, { VideoCardSkeleton } from '@/components/VideoCard/VideoCard';
-import CreatorStories from '@/components/CreatorStories/CreatorStories';
 import ShortsShelf from '@/components/ShortsShelf/ShortsShelf';
 import { categories } from '@/data/dummyData';
 import { apiClient } from '@/utils/api';
@@ -155,15 +154,24 @@ const Home = () => {
   // that balloon the DOM and crash the tab on low-RAM machines)
   useEffect(() => {
     const handleScroll = () => {
-      const threshold = 400; // px from bottom
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.scrollHeight - threshold) {
+      const threshold = 800; // px from bottom for smooth mobile loading
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const windowHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const fullHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        document.documentElement.offsetHeight || 0
+      );
+      if (windowHeight + scrollY >= fullHeight - threshold) {
         if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-        scrollTimerRef.current = setTimeout(loadMoreVideos, 150);
+        scrollTimerRef.current = setTimeout(loadMoreVideos, 100);
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     };
   }, [homeCategory]);
@@ -225,16 +233,7 @@ const Home = () => {
       <Sidebar isOpen={sidebarOpen} />
       
       <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-        <CreatorStories
-          onSelectCreator={(name) => {
-            if (homeCategory === name) {
-              setHomeCategory('All');
-            } else {
-              setHomeCategory(name);
-            }
-          }}
-          activeCreator={homeCategory}
-        />
+
         {showHero && heroVideo && (
           <div className="hero-carousel" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
             <div className="hero-slides">

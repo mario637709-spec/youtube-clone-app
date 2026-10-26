@@ -4,6 +4,7 @@ const isExport = process.env.NEXT_EXPORT === 'true' || process.env.CAPACITOR_BUI
 const nextConfig = {
   ...(isExport ? {
     output: 'export',
+    trailingSlash: true,
     images: { unoptimized: true }
   } : {}),
   reactStrictMode: false,

@@ -20,17 +20,23 @@ const VideoCard = ({ video }) => {
     return views;
   };
 
-  const handleVideoClick = () => {
-    // If pending and not live, we still navigate but the player will show the custom uploader progress loader
-    router.push(`/watch?v=${video.id}`);
+  const handleVideoClick = (e) => {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const vidId = video.id || video.youtube_id || video._id;
+    if (!vidId) return;
+    // Hard window.location.assign ensures the watch page opens directly in Capacitor Android WebView
+    window.location.assign(`/watch?v=${encodeURIComponent(vidId)}`);
   };
 
   // 2026-08-14: Playback speed fix — pre-warm the client-side stream
-  // extraction on hover (YouTube-style). The player's Tier 0 extraction
-  // takes 8-15s COLD; warming it on hover means the watch page's IndexedDB
-  // cache already has the googlevideo URL → instant play instead of the
-  // old "1 min black screen / 50% never plays" behavior.
+  // extraction on hover (YouTube-style). Only for desktop mouse hover, not touchscreens.
   const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+      return;
+    }
     if (video.status === 'Pending') return; // Disable hover preview for pending uploads
     let url = video.videoUrl;
     if (url && url.includes('/api/videos/stream/')) {

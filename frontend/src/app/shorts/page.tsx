@@ -173,7 +173,12 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
   };
 
   const getShortVideoSrc = () => {
-    let src = video.videoUrl;
+    const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
+    const apiBase = getApiBaseUrl();
+    if (ytId && /^[a-zA-Z0-9_-]{11}$/.test(ytId)) {
+      return `${apiBase}/stream/auto/${ytId}?quality=360p`;
+    }
+    let src = video.videoUrl || '';
     if (src && src.includes('/api/videos/stream/')) {
       const poToken = window.youtubePoToken || localStorage.getItem('youtube_po_token') || '';
       const visitorData = window.youtubeVisitorData || localStorage.getItem('youtube_visitor_data') || '';
@@ -188,10 +193,21 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
     if (hasError) return;
     if (isActive) {
       if (videoRef.current) {
-        videoRef.current
-          .play()
-          .then(() => setIsPlaying(true))
-          .catch(() => setIsPlaying(false));
+        videoRef.current.currentTime = 0;
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => setIsPlaying(true))
+            .catch((err) => {
+              console.log('[Shorts] Autoplay unmuted failed, trying muted:', err.message);
+              if (videoRef.current) {
+                videoRef.current.muted = true;
+                videoRef.current.play()
+                  .then(() => setIsPlaying(true))
+                  .catch(() => setIsPlaying(false));
+              }
+            });
+        }
       }
     } else {
       if (videoRef.current) {

@@ -60,14 +60,34 @@ const formatDoc = (doc) => {
 const getVideos = async (query = {}) => {
   const { category } = query;
 
+  let rtdbVideos = [];
   if (typeof rtdb.getFeedVideos === 'function') {
     try {
-      const rtdbVideos = await rtdb.getFeedVideos({ category, page: 1, limit: 100 });
-      if (rtdbVideos && rtdbVideos.length > 0) return rtdbVideos;
+      rtdbVideos = (await rtdb.getFeedVideos({ category, page: 1, limit: 500 })) || [];
     } catch (e) {
       console.warn('[dbFirestore] RTDB getFeedVideos miss:', e.message);
     }
   }
+
+  let corpus = [];
+  try {
+    const { videos: allVids } = readAllVideos();
+    corpus = Object.values(allVids || {});
+    if (category && category !== 'All') {
+      corpus = corpus.filter(v => (v.category || '').toLowerCase() === category.toLowerCase());
+    }
+  } catch (e) {}
+
+  const seen = new Set();
+  const list = [];
+  for (const v of [...rtdbVideos, ...corpus]) {
+    const vId = v.id || v.youtube_id;
+    if (vId && !seen.has(vId)) {
+      seen.add(vId);
+      list.push(v);
+    }
+  }
+  if (list.length > 0) return list;
 
   if (isRealFirebase && isFirestoreUsable()) {
     try {
@@ -113,7 +133,7 @@ const getVideos = async (query = {}) => {
 const getShortsVideos = async () => {
   if (typeof rtdb.getShortsFeed === 'function') {
     try {
-      const rtdbShorts = await rtdb.getShortsFeed({ page: 1, limit: 100 });
+      const rtdbShorts = await rtdb.getShortsFeed({ page: 1, limit: 500 });
       if (rtdbShorts && rtdbShorts.length > 0) return rtdbShorts;
     } catch (e) {
       console.warn('[dbFirestore] RTDB getShortsFeed miss:', e.message);

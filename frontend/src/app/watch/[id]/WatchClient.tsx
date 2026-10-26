@@ -21,9 +21,16 @@ export function generateStaticParams() {
 const Watch = () => {
   const params = useParams();
   const searchParams = useSearchParams();
+  let rawV = '';
+  if (typeof window !== 'undefined') {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      rawV = urlParams.get('v') || urlParams.get('id') || '';
+    } catch {}
+  }
   const id = (params && typeof params.id === 'string' && params.id)
     ? params.id
-    : (searchParams?.get('v') || searchParams?.get('id') || '');
+    : (searchParams?.get('v') || searchParams?.get('id') || rawV);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [video, setVideo] = useState(null);
   const [relatedVideos, setRelatedVideos] = useState([]);
