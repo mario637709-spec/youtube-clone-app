@@ -485,25 +485,27 @@ const extractUrl = async (videoId, quality = 'auto', opts = {}) => {
     //    first (internal 4s endpoint timeout), fall back to the
     //    IOS/WEB race only if it fails.
     try {
+      // Parallel race: IOS resolves in ~1s, ANDROID_VR resolves in ~0.5s.
+      // Racing both in parallel eliminates the 6-second serial timeout delay!
       result = await withTimeout(
-        extractViaAndroidVr(videoId, quality),
+        Promise.any([
+          extractViaAndroidVr(videoId, quality),
+          extractViaIOSWithRetry(videoId, quality),
+        ]),
         PRIMARY_RACE_TIMEOUT_MS,
-        'ANDROID_VR preferred extraction'
+        'parallel primary extraction'
       );
-    } catch (androidErr) {
-      console.warn(`[URLExtractor] ANDROID_VR failed — racing IOS/WEB fallback: ${androidErr.message}`);
+    } catch (primaryErr) {
+      console.warn(`[URLExtractor] Primary parallel extraction failed — trying web embedded / ytdl: ${primaryErr.message}`);
       try {
         result = await withTimeout(
-          Promise.any([
-            extractViaIOSWithRetry(videoId, quality),
-            extractViaWebEmbedded(videoId, quality),
-          ]),
+          extractViaWebEmbedded(videoId, quality),
           PRIMARY_RACE_TIMEOUT_MS,
-          'fallback extraction race'
+          'web embedded extraction'
         );
       } catch (agg) {
         lastError = agg.errors?.[0] || agg;
-        console.warn(`[URLExtractor] All primary methods failed: ${lastError.message}`);
+        console.warn(`[URLExtractor] Web fallback failed: ${lastError.message}`);
 
         // Last resort: ytdl-core (known limitation: cannot parse nsig)
         try {

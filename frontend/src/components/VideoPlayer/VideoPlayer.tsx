@@ -353,6 +353,11 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
         return streamUrl;
       };
 
+      // Instant start: immediately seed the proxy URL so Android WebView begins streaming in <0.5s!
+      const initialImmediateUrl = getProxyFallbackUrl('360p');
+      setResolvedUrl(initialImmediateUrl);
+      setLoadingStream(false);
+
       if (feedStatus === 'LOGIN_REQUIRED') {
         console.warn(`[VideoPlayer] ${ytId} flagged LOGIN_REQUIRED by feed — will try client extraction (ANDROID_VR+pot) first, proxy fallback.`);
         reportStreamSource(ytId, 'client-try');
@@ -893,22 +898,13 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
             }
           })
           .catch((err) => {
-            console.log('Autoplay prevented or failed, retrying on canplay:', err.message);
-            const onCanPlay = () => {
-              if (videoRef.current) {
-                videoRef.current.play()
-                  .then(() => {
-                    setIsPlaying(true);
-                    if (audioRef.current && audioRef.current.paused) {
-                      audioRef.current.play().catch(e => console.log('canplay play failed:', e.message));
-                    }
-                  })
-                  .catch(e => console.log('canplay play failed:', e.message));
-                videoRef.current.removeEventListener('canplay', onCanPlay);
-              }
-            };
+            console.log('Autoplay prevented on mobile, falling back to muted autoplay:', err.message);
             if (videoRef.current) {
-              videoRef.current.addEventListener('canplay', onCanPlay);
+              videoRef.current.muted = true;
+              setIsMuted(true);
+              videoRef.current.play().then(() => {
+                setIsPlaying(true);
+              }).catch(() => {});
             }
           });
       };

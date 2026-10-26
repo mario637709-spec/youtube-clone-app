@@ -3,6 +3,7 @@ const router = express.Router();
 const dbFirestore = require('../utils/dbFirestore');
 const { optionalProtect } = require('../middleware/auth');
 const cache = require('../utils/cache');
+const { db, isRealFirebase } = require('../config/firebase');
 const {
   buildProfile,
   rankFeed,
@@ -40,14 +41,12 @@ const filterHomeVideos = (videos) => {
 };
 
 // GET /api/feed?category=All&page=1&limit=20&guestId=g_xxx
-// Logged-in (JWT) → personal profile ranking
-// Guest (guestId) → guest profile ranking
-// Nobody   → pure trending (existing algoScore behavior)
 router.get('/', optionalProtect, async (req, res) => {
   try {
     const { category, guestId } = req.query;
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
+    const start = (page - 1) * limit;
 
     let profile = null;
     if (req.user && req.user.id) {
@@ -63,34 +62,70 @@ router.get('/', optionalProtect, async (req, res) => {
       ? `feed_${req.user ? `u_${req.user.id}` : `g_${guestId}`}_${category || 'all'}`
       : `feed_global_${category || 'all'}`;
 
-    // Return cached feed if available (instant 1ms response for global & repeat users)
+    // Return cached feed if available and within slice range
     let cached = getFeedCache(cacheKey);
-    if (cached) {
-      const start = (page - 1) * limit;
+    if (cached && start < cached.length) {
       const slice = cached.slice(start, start + limit);
       return res.json({
         videos: slice,
         page,
         limit,
-        total: cached.length,
-        hasMore: start + limit < cached.length,
+        total: Math.max(cached.length, 3000),
+        hasMore: true,
       });
     }
 
-    // Videos come from the dbJson snapshot cache
+    // Videos come from RTDB + Firestore entire database
     let videos = await dbFirestore.getVideos({ category });
     videos = filterHomeVideos(videos);
 
     const ranked = rankFeed(videos, profile);
     setFeedCache(cacheKey, ranked, 600); // 10 min cache
 
-    const start = (page - 1) * limit;
+    if (start < ranked.length) {
+      const slice = ranked.slice(start, start + limit);
+      return res.json({
+        videos: slice,
+        page,
+        limit,
+        total: Math.max(ranked.length, 3000),
+        hasMore: start + limit < ranked.length,
+      });
+    }
+
+    // Deeper offset query directly from Firestore if user scrolled beyond the pre-ranked set
+    if (isRealFirebase) {
+      try {
+        let q = db.collection('videos').offset(start).limit(limit);
+        if (category && category !== 'All') {
+          q = q.where('category', '==', category);
+        }
+        const snap = await q.get();
+        const deeper = [];
+        snap.forEach((d) => deeper.push({ id: d.id, ...d.data() }));
+        if (deeper.length > 0) {
+          const filteredDeeper = filterHomeVideos(deeper);
+          return res.json({
+            videos: filteredDeeper,
+            page,
+            limit,
+            total: start + deeper.length + 500,
+            hasMore: deeper.length === limit,
+          });
+        }
+      } catch (err) {
+        console.warn('[Feed] Firestore deep pagination fallback failed:', err.message);
+      }
+    }
+
+    // Fallback: loop back into top ranked feed with shuffle to provide endless experience
+    const looped = [...ranked].sort(() => 0.5 - Math.random()).slice(0, limit);
     res.json({
-      videos: ranked.slice(start, start + limit),
+      videos: looped,
       page,
       limit,
-      total: ranked.length,
-      hasMore: start + limit < ranked.length,
+      total: ranked.length || 100,
+      hasMore: true,
     });
   } catch (error) {
     console.error('[Feed] Error:', error.message);

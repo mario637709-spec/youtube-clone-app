@@ -1,4 +1,4 @@
-﻿.watch-page {
+.watch-page {
   min-height: 100vh;
   background-color: var(--yt-bg-main);
   color: var(--yt-text-primary);
@@ -1052,3 +1052,76 @@
   overflow: hidden;
 }
 
+
+/* Mobile In-Place Watch Modal Overlay */
+.watch-overlay-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 999999;
+  background-color: var(--yt-main-bg, #0f0f0f);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.watch-top-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background-color: #0f0f0f;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.watch-back-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.watch-back-pill:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.watch-nav-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .watch-overlay-modal .watch-content {
+    margin-top: 0 !important;
+    padding: 0 0 80px 0 !important;
+    flex-direction: column;
+  }
+  .watch-overlay-modal .watch-main {
+    padding: 0 12px;
+  }
+  .watch-overlay-modal .video-player-container {
+    border-radius: 0 !important;
+  }
+}

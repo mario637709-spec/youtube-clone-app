@@ -18,7 +18,7 @@ export function generateStaticParams() {
   return initialFeed.map(v => ({ id: v.id }));
 }
 
-const Watch = () => {
+const Watch = ({ activeVideo = null, onClose = null, onSelectVideo = null, standalone = true } = {}) => {
   const params = useParams();
   const searchParams = useSearchParams();
   let rawV = '';
@@ -28,14 +28,23 @@ const Watch = () => {
       rawV = urlParams.get('v') || urlParams.get('id') || '';
     } catch {}
   }
-  const id = (params && typeof params.id === 'string' && params.id)
+  const id = activeVideo?.id || activeVideo?.youtube_id || ((params && typeof params.id === 'string' && params.id)
     ? params.id
-    : (searchParams?.get('v') || searchParams?.get('id') || rawV);
+    : (searchParams?.get('v') || searchParams?.get('id') || rawV));
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [video, setVideo] = useState(null);
+  const [video, setVideo] = useState(activeVideo || null);
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [comments, setComments] = useState([]);
-  const isLoading = !video || (video.id !== id && video.youtube_id !== id);
+  const isLoading = !video || (!activeVideo && video.id !== id && video.youtube_id !== id);
+
+  useEffect(() => {
+    if (activeVideo) {
+      setVideo(activeVideo);
+      if (activeVideo.description) {
+        setChapters(parseChapters(activeVideo.description));
+      }
+    }
+  }, [activeVideo]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
@@ -495,11 +504,25 @@ Please answer the user's question about this video in a concise manner.`;
   };
 
   return (
-    <div className="watch-page">
-      <Navbar onMenuClick={toggleSidebar} />
-      <Sidebar isOpen={sidebarOpen} />
+    <div className={`watch-page ${!standalone ? 'watch-modal-mode' : ''}`}>
+      {standalone ? (
+        <>
+          <Navbar onMenuClick={toggleSidebar} />
+          <Sidebar isOpen={sidebarOpen} />
+        </>
+      ) : (
+        <div className="watch-top-nav-bar">
+          <button className="watch-back-pill" onClick={onClose} title="Back to Feed">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+            <span>Back</span>
+          </button>
+          <span className="watch-nav-title">{video?.title || 'YouTube'}</span>
+        </div>
+      )}
       
-      <main className={`watch-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'} ${theaterMode ? 'theater-mode' : ''}`}>
+      <main className={`watch-content ${standalone && sidebarOpen ? 'sidebar-open' : 'sidebar-closed'} ${theaterMode ? 'theater-mode' : ''}`}>
         {theaterMode && (
           <div className="theater-player-container">
             <VideoPlayer 
@@ -767,7 +790,7 @@ Please answer the user's question about this video in a concise manner.`;
               ))
             ) : (
               relatedVideos.map(relatedVideo => (
-                <RelatedVideoCard key={relatedVideo.id} relatedVideo={relatedVideo} />
+                <RelatedVideoCard key={relatedVideo.id} relatedVideo={relatedVideo} onSelectVideo={onSelectVideo} />
               ))
             )}
           </div>
@@ -804,7 +827,7 @@ const parseChapters = (description) => {
   return chapters.filter((c, i) => i === 0 || c.time > chapters[i - 1].time).length >= 2 ? chapters : [];
 };
 
-const RelatedVideoCard = ({ relatedVideo }) => {
+const RelatedVideoCard = ({ relatedVideo, onSelectVideo }) => {
   const router = useRouter();
 
   const formatViews = (views) => {
@@ -816,10 +839,18 @@ const RelatedVideoCard = ({ relatedVideo }) => {
     return views;
   };
 
+  const handleCardClick = () => {
+    if (onSelectVideo) {
+      onSelectVideo(relatedVideo);
+    } else {
+      router.push(`/watch?v=${relatedVideo.id}`);
+    }
+  };
+
   return (
     <div 
       className="related-video-card"
-      onClick={() => router.push(`/watch/${relatedVideo.id}`)}
+      onClick={handleCardClick}
     >
       <img 
         src={relatedVideo.thumbnail}

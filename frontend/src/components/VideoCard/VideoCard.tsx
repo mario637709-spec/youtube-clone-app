@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getClientDirectStream } from '@/utils/clientStream';
+import useVideoStore from '@/store/videoStore';
 import './VideoCard.css';
 
 const VideoCard = ({ video }) => {
@@ -10,6 +11,7 @@ const VideoCard = ({ video }) => {
   const [videoSrc, setVideoSrc] = useState(null);
   const videoRef = React.useRef(null);
   const router = useRouter();
+  const { setCurrentVideo } = useVideoStore();
 
   const formatViews = (views) => {
     if (views >= 1000000) {
@@ -27,8 +29,15 @@ const VideoCard = ({ video }) => {
     }
     const vidId = video.id || video.youtube_id || video._id;
     if (!vidId) return;
-    // Hard window.location.assign ensures the watch page opens directly in Capacitor Android WebView
-    window.location.assign(`/watch?v=${encodeURIComponent(vidId)}`);
+
+    // In-place playback: opens the watch sheet overlay smoothly WITHOUT reloading
+    // the page or destroying the home feed scroll position!
+    setCurrentVideo(video);
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({ modal: 'watch', videoId: vidId }, '', `/watch?v=${encodeURIComponent(vidId)}`);
+      } catch {}
+    }
   };
 
   // 2026-08-14: Playback speed fix — pre-warm the client-side stream

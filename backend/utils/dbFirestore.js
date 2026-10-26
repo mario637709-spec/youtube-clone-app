@@ -56,7 +56,7 @@ const formatDoc = (doc) => {
   return { id: doc.id, ...doc.data() };
 };
 
-// 1. Fetch all videos
+// 1. Fetch all videos (merges Firebase RTDB + Firestore entire database + corpus)
 const getVideos = async (query = {}) => {
   const { category } = query;
 
@@ -87,22 +87,30 @@ const getVideos = async (query = {}) => {
       list.push(v);
     }
   }
-  if (list.length > 0) return list;
 
+  // Merge full Firestore video corpus (up to thousands of videos from the database)
   if (isRealFirebase && isFirestoreUsable()) {
     try {
-      let ref = db.collection('videos');
+      let ref = db.collection('videos').limit(2000);
       if (category && category !== 'All') {
         ref = ref.where('category', '==', category);
       }
       const snapshot = await withTimeout(ref.get(), FIRESTORE_TIMEOUT_MS, `firestore getVideos(${category || 'all'})`);
-      const list = [];
-      snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-      return list;
+      snapshot.forEach(doc => {
+        const docData = doc.data();
+        const v = { id: doc.id, ...docData };
+        const vId = v.id || v.youtube_id;
+        if (vId && !seen.has(vId)) {
+          seen.add(vId);
+          list.push(v);
+        }
+      });
     } catch (err) {
-      console.error(`Firestore getVideos error (${category || 'all'}):`, err.message);
+      console.warn(`Firestore getVideos error (${category || 'all'}):`, err.message);
     }
   }
+
+  if (list.length > 0) return list;
 
   // MongoDB active fallback
   if (isMongoConnected()) {

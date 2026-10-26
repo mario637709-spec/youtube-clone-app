@@ -11,11 +11,12 @@ import useVideoStore from '@/store/videoStore';
 import { getGuestId } from '@/utils/analytics';
 import { initialFeed } from '@/data/initialFeed';
 import { prewarmVideos } from '@/utils/clientStream';
+import WatchClient from './watch/[id]/WatchClient';
 import '@/pages/Home.css';
 
 const Home = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { videos, setVideos, homeCategory, setHomeCategory } = useVideoStore();
+  const { videos, setVideos, homeCategory, setHomeCategory, currentVideo, setCurrentVideo } = useVideoStore();
   const [loading, setLoading] = useState(videos.length === 0);
 
   const [page, setPage] = useState(1);
@@ -23,6 +24,37 @@ const Home = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
+
+  // Handle hardware Back button and browser popstate for in-place watch modal
+  useEffect(() => {
+    const handlePopState = () => {
+      if (currentVideo) {
+        setCurrentVideo(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentVideo, setCurrentVideo]);
+
+  // Check URL on startup: if ?v=xxx or /watch?v=xxx was opened directly, load that video
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const vidId = urlParams.get('v') || urlParams.get('id');
+        if (vidId && !currentVideo) {
+          const found = initialFeed.find(x => x.id === vidId || x.youtube_id === vidId);
+          if (found) {
+            setCurrentVideo(found);
+          } else {
+            apiClient.get(`/videos/${vidId}`).then(vid => {
+              if (vid) setCurrentVideo(vid);
+            }).catch(() => {});
+          }
+        }
+      } catch {}
+    }
+  }, []);
   // Refs prevent stale-closure races: rapid scroll events could fire multiple
   // concurrent fetches with the same page and skip/shorten the feed.
   const pageRef = useRef(1);
@@ -241,7 +273,14 @@ const Home = () => {
                 <div
                   key={v.id}
                   className={`hero-slide ${i === heroIndex ? 'active' : ''}`}
-                  onClick={() => window.location.assign(`/watch?v=${v.id}`)}
+                  onClick={() => {
+                    setCurrentVideo(v);
+                    if (typeof window !== 'undefined') {
+                      try {
+                        window.history.pushState({ modal: 'watch', videoId: v.id }, '', `/watch?v=${encodeURIComponent(v.id)}`);
+                      } catch {}
+                    }
+                  }}
                 >
                   <div className="hero-backdrop">
                     <img
@@ -329,6 +368,36 @@ const Home = () => {
           </div>
         )}
       </main>
+
+      {/* Seamless in-place Watch Sheet: preserves exact feed scroll position */}
+      {currentVideo && (
+        <div className="watch-overlay-modal">
+          <WatchClient
+            activeVideo={currentVideo}
+            standalone={false}
+            onClose={() => {
+              setCurrentVideo(null);
+              if (typeof window !== 'undefined') {
+                try {
+                  if (window.history.state?.modal === 'watch') {
+                    window.history.back();
+                  } else {
+                    window.history.replaceState({}, '', '/');
+                  }
+                } catch {}
+              }
+            }}
+            onSelectVideo={(newVid) => {
+              setCurrentVideo(newVid);
+              if (typeof window !== 'undefined') {
+                try {
+                  window.history.pushState({ modal: 'watch', videoId: newVid.id }, '', `/watch?v=${encodeURIComponent(newVid.id)}`);
+                } catch {}
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

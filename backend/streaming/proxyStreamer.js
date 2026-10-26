@@ -168,14 +168,7 @@ const proxyStream = async (videoId, req, res, quality = 'auto') => {
         }
       } else {
         console.error(`[ProxyStreamer] URL extraction failed for ${videoId}:`, extractErr.message);
-        if (!res.headersSent) {
-          res.status(502).json({
-            error: 'Could not get video stream URL',
-            message: extractErr.message,
-            videoId,
-          });
-        }
-        return;
+        throw extractErr; // Propagate so streamOrchestrator falls back to Piped / Invidious!
       }
     }
 
