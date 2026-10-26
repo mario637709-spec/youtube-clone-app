@@ -1673,14 +1673,22 @@ const handleError = () => {
             </div>
           )}
 
-          {hasError && (
+          {hasError && ytId ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1`}
+              title={video?.title || "Video Player"}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              style={{ width: '100%', height: '100%', border: 'none', position: 'absolute', top: 0, left: 0, zIndex: 10 }}
+            />
+          ) : hasError ? (
             <div className="video-error-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', background: '#000', position: 'absolute', top: 0, left: 0, width: '100%' }}>
               <svg viewBox="0 0 24 24" width="48" height="48" style={{ marginBottom: '16px', color: '#aaa' }}>
                 <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
               </svg>
               <p style={{ fontSize: '16px', fontWeight: '500' }}>This video is unavailable.</p>
             </div>
-          )}
+          ) : null}
           
           {(isLoading || loadingStream) && (
             <div className="video-loading-overlay">

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const dbFirestore = require('../utils/dbFirestore');
+const rtdb = require('../utils/rtdb');
 const { optionalProtect } = require('../middleware/auth');
 const cache = require('../utils/cache');
 const { db, isRealFirebase } = require('../config/firebase');
@@ -70,13 +71,13 @@ router.get('/', optionalProtect, async (req, res) => {
         videos: slice,
         page,
         limit,
-        total: Math.max(cached.length, 3000),
+        total: 480000,
         hasMore: true,
       });
     }
 
     // Videos come from RTDB + Firestore entire database
-    let videos = await dbFirestore.getVideos({ category });
+    let videos = await dbFirestore.getVideos({ category, page, limit });
     videos = filterHomeVideos(videos);
 
     const ranked = rankFeed(videos, profile);
@@ -88,9 +89,28 @@ router.get('/', optionalProtect, async (req, res) => {
         videos: slice,
         page,
         limit,
-        total: Math.max(ranked.length, 3000),
+        total: 480000,
         hasMore: start + limit < ranked.length,
       });
+    }
+
+    // Deeper pagination from RTDB (19,439+ video index across db1, db2, db3)
+    try {
+      const rtdbMore = await rtdb.getFeedVideos({ category, page, limit });
+      if (rtdbMore && rtdbMore.length > 0) {
+        const filteredRtdb = filterHomeVideos(rtdbMore);
+        if (filteredRtdb.length > 0) {
+          return res.json({
+            videos: filteredRtdb,
+            page,
+            limit,
+            total: 480000,
+            hasMore: true,
+          });
+        }
+      }
+    } catch (rtdbErr) {
+      console.warn('[Feed] RTDB deep pagination fallback failed:', rtdbErr.message);
     }
 
     // Deeper offset query directly from Firestore if user scrolled beyond the pre-ranked set

@@ -81,7 +81,7 @@ const FORWARD_HEADERS = [
 // with the next chunk (bytes=524288-524287 etc.).
 const MAX_CLOSED_RANGE_END = 524287; // 512 KiB — proven to work on redirect targets
 const toClosedRange = (rangeHeader) => {
-  if (!rangeHeader) return null;
+  if (!rangeHeader) return 'bytes=0-524287';
   const m = /^bytes=(\d+)-(\d*)$/.exec(rangeHeader);
   if (!m) return rangeHeader;
   const start = parseInt(m[1], 10);

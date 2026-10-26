@@ -70,7 +70,6 @@ const AXIOS_AGENTS = { httpsAgent: extractorAgent, httpAgent: extractorHttpAgent
 // confirm you're not a bot" (400) while the googleapis sandbox host
 // serves the same API without the bot check. Verified 2026-08.
 const PLAYER_ENDPOINTS = [
-  'https://release-youtubei.sandbox.googleapis.com/youtubei/v1/player',
   'https://www.youtube.com/youtubei/v1/player',
 ];
 
@@ -489,8 +488,8 @@ const extractUrl = async (videoId, quality = 'auto', opts = {}) => {
       // Racing both in parallel eliminates the 6-second serial timeout delay!
       result = await withTimeout(
         Promise.any([
-          extractViaAndroidVr(videoId, quality),
           extractViaIOSWithRetry(videoId, quality),
+          extractViaAndroidVr(videoId, quality),
         ]),
         PRIMARY_RACE_TIMEOUT_MS,
         'parallel primary extraction'

@@ -58,12 +58,12 @@ const formatDoc = (doc) => {
 
 // 1. Fetch all videos (merges Firebase RTDB + Firestore entire database + corpus)
 const getVideos = async (query = {}) => {
-  const { category } = query;
+  const { category, page = 1, limit = 20 } = query;
 
   let rtdbVideos = [];
   if (typeof rtdb.getFeedVideos === 'function') {
     try {
-      rtdbVideos = (await rtdb.getFeedVideos({ category, page: 1, limit: 500 })) || [];
+      rtdbVideos = (await rtdb.getFeedVideos({ category, page, limit: Math.max(limit * 3, 60) })) || [];
     } catch (e) {
       console.warn('[dbFirestore] RTDB getFeedVideos miss:', e.message);
     }
