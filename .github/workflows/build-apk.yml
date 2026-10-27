@@ -133,16 +133,11 @@ jobs:
 
             echo "3. Tapping first visible video card to navigate to Watch Page..."
             adb shell input tap 540 850
-            sleep 8
+            sleep 15
             adb exec-out screencap -p > emulator_watch_opened.png
 
             echo "Checking app is still in the foreground..."
-            focus=$(adb shell dumpsys window | grep -E 'mCurrentFocus' | head -n 1)
-            echo "$focus"
-            case "$focus" in
-              *com.kiro.youtube*) echo "App is foreground" ;;
-              *) echo "APP CRASHED OR LEFT FOREGROUND"; adb logcat -d -t 500; adb logcat -d > emulator_full_logcat.txt; exit 1 ;;
-            esac
+            if adb shell dumpsys window | grep -q 'mCurrentFocus=.*com.kiro.youtube'; then echo "App is foreground"; else echo "APP CRASHED OR LEFT FOREGROUND"; adb logcat -d -t 500; adb logcat -d > emulator_full_logcat.txt; exit 1; fi
 
             echo "4. Tapping video player center to trigger/unpause playback..."
             adb shell input tap 540 450
@@ -173,6 +168,7 @@ jobs:
             ls -lh emulator_*.png
 
       - name: Upload Screenshots as Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: live-emulator-screenshots
