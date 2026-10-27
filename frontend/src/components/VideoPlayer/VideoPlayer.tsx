@@ -283,6 +283,10 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
 
   // Render-time YouTube ID (used by the iframe fallback).
   const ytId = getYoutubeId(video);
+  // The Android WebView on older devices can crash while rendering a heavy
+  // YouTube iframe. Native builds therefore use a safe "Open in YouTube"
+  // fallback instead; the web build keeps the official embed.
+  const isNativeApp = process.env.NEXT_PUBLIC_IS_CAPACITOR === 'true';
 
   // Sync state if video changes
   useEffect(() => {
@@ -1325,34 +1329,58 @@ const handleError = () => {
           )}
 
           {hasError && ytId ? (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: '#000' }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0`}
-                title={video?.title || "Video Player"}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                style={{ width: '100%', height: '100%', border: 'none' }}
-              />
-              <a
-                href={`https://www.youtube.com/watch?v=${ytId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  position: 'absolute',
-                  right: 12,
-                  bottom: 12,
-                  zIndex: 61,
-                  background: 'rgba(0,0,0,0.78)',
-                  color: '#fff',
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  textDecoration: 'none'
-                }}
-              >
-                Open in YouTube ↗
-              </a>
-            </div>
+            isNativeApp ? (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: '#000', overflow: 'hidden' }}>
+                {video?.thumbnail ? (
+                  <img
+                    src={video.thumbnail}
+                    alt={video?.title || 'Video thumbnail'}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.35 }}
+                  />
+                ) : null}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+                  <p style={{ color: '#fff', fontSize: 16, fontWeight: 600, margin: '0 0 8px 0' }}>Playback could not start in the app</p>
+                  <p style={{ color: '#bbb', fontSize: 13, margin: '0 0 18px 0', maxWidth: 320 }}>Open this video in the official YouTube app or browser.</p>
+                  <a
+                    href={`https://www.youtube.com/watch?v=${ytId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-block', background: '#ff0000', color: '#fff', padding: '12px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    Open in YouTube
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: '#000' }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0`}
+                  title={video?.title || "Video Player"}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+                <a
+                  href={`https://www.youtube.com/watch?v=${ytId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    bottom: 12,
+                    zIndex: 61,
+                    background: 'rgba(0,0,0,0.78)',
+                    color: '#fff',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    textDecoration: 'none'
+                  }}
+                >
+                  Open in YouTube
+                </a>
+              </div>
+            )
           ) : hasError ? (
             <div className="video-error-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', background: '#000', position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 60 }}>
               <svg viewBox="0 0 24 24" width="48" height="48" style={{ marginBottom: '16px', color: '#aaa' }}>

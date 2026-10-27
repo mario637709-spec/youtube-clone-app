@@ -175,6 +175,7 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
 
   const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
   const isYoutube = !!(ytId && /^[a-zA-Z0-9_-]{11}$/.test(ytId));
+  const isNativeApp = process.env.NEXT_PUBLIC_IS_CAPACITOR === 'true';
 
   const formatCount = (count: number) => {
     if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
@@ -386,6 +387,28 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
       {(() => {
         const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
         if (hasError && ytId) {
+          if (isNativeApp) {
+            return (
+              <div className="short-video-fallback">
+                <img
+                  src={video.thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=720&auto=format&fit=crop&q=80'}
+                  alt={video.title}
+                  className="short-bg-fallback-img"
+                />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, textAlign: 'center', zIndex: 11 }}>
+                  <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: '0 0 10px 0' }}>Playback could not start</p>
+                  <a
+                    href={`https://www.youtube.com/shorts/${ytId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-block', background: '#ff0000', color: '#fff', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    Open in YouTube
+                  </a>
+                </div>
+              </div>
+            );
+          }
           return (
             <div style={{ position: 'absolute', inset: 0 }}>
               <iframe
@@ -412,7 +435,7 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
                   textDecoration: 'none'
                 }}
               >
-                Open in YouTube ↗
+                Open in YouTube
               </a>
             </div>
           );

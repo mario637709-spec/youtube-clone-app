@@ -77,7 +77,7 @@ jobs:
     name: Run Android Emulator & Capture Live Screenshots
     needs: build-apk
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: write
 
@@ -101,18 +101,19 @@ jobs:
       - name: Run Android Emulator and Test APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
-          target: default
+          api-level: 34
+          target: google_apis
           arch: x86_64
-          profile: pixel_4
+          profile: pixel_6
           disable-animations: true
-          emulator-options: -no-window -no-audio -gpu swiftshader_indirect
+          emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-snapshot -no-boot-anim
           script: |
             echo "Waiting for Android device to boot..."
             adb wait-for-device
             
             echo "Installing APK..."
             adb install apk_folder/*.apk
+            adb logcat -c || true
             
             echo "Launching App com.kiro.youtube..."
             adb shell monkey -p com.kiro.youtube -c android.intent.category.LAUNCHER 1
@@ -133,6 +134,14 @@ jobs:
             sleep 8
             adb exec-out screencap -p > emulator_watch_opened.png
 
+            echo "Checking app is still in the foreground..."
+            focus=$(adb shell dumpsys window | grep -E 'mCurrentFocus' | head -n 1)
+            echo "$focus"
+            case "$focus" in
+              *com.kiro.youtube*) echo "App is foreground" ;;
+              *) echo "APP CRASHED OR LEFT FOREGROUND"; adb logcat -d -t 500; adb logcat -d > emulator_full_logcat.txt; exit 1 ;;
+            esac
+
             echo "4. Tapping video player center to trigger/unpause playback..."
             adb shell input tap 540 450
             echo "Waiting 6 seconds while video streams from Google CDN..."
@@ -149,7 +158,8 @@ jobs:
             adb exec-out screencap -p > emulator_video_controls.png
 
             echo "7. Capturing logcat media stream logs..."
-            adb logcat -d | grep -E "chromium|MediaPlayer|NuPlayer|MediaCodec|stream" | tail -n 80 > emulator_playback_logs.txt || true
+            adb logcat -d | grep -E "chromium|MediaPlayer|NuPlayer|MediaCodec|stream|Capacitor|VideoPlayer|clientStream|youtubeDirect" | tail -n 200 > emulator_playback_logs.txt || true
+            adb logcat -d > emulator_full_logcat.txt || true
 
             echo "8. Navigating back and tapping Shorts..."
             adb shell input keyevent 4 || true
@@ -167,6 +177,7 @@ jobs:
           path: |
             emulator_*.png
             emulator_playback_logs.txt
+            emulator_full_logcat.txt
 
       - name: Commit Screenshots to Repository for Live Preview
         run: |
