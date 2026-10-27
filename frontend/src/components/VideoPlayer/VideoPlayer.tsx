@@ -349,9 +349,9 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
       setResolvedUrl('');
       setResolvedAudioUrl('');
 
-      const effectiveQuality = selectedQuality === 'auto'
+      const effectiveQuality = validatedQuality === 'auto'
         ? getNetworkSuggestedQuality()
-        : selectedQuality;
+        : validatedQuality;
       const skipCache = errorRetryCountRef.current > 0;
 
       // One content-bound poToken + visitorData for every tier.
@@ -387,9 +387,9 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
         playerConfigCacheRef.current = config;
         setDirectQualities(config.qualityMap || {});
 
-        const targetKey = selectedQuality === 'auto'
+        const targetKey = validatedQuality === 'auto'
           ? getNetworkSuggestedQuality()
-          : selectedQuality;
+          : validatedQuality;
         const entry = config.qualityMap?.[targetKey];
         const fallbackEntry = Object.values(config.qualityMap || {}).find(
           (e: any) => e && e.url === config.bestUrl
@@ -1065,12 +1065,12 @@ const handleError = () => {
   const getVideoSrc = () => {
     if (!video) return '';
     let src = '';
-    if (selectedQuality === 'auto') {
+    if (validatedQuality === 'auto') {
       src = video.videoUrl;
-    } else if (video.qualities && video.qualities[selectedQuality]) {
-      src = video.qualities[selectedQuality];
+    } else if (video.qualities && video.qualities[validatedQuality]) {
+      src = video.qualities[validatedQuality];
     } else if (video.videoUrl && video.videoUrl.includes('/api/videos/stream/')) {
-      src = `${video.videoUrl}?quality=${selectedQuality}`;
+      src = `${video.videoUrl}?quality=${validatedQuality}`;
     } else {
       src = video.videoUrl;
     }
@@ -1086,12 +1086,27 @@ const handleError = () => {
   };
 
 
-  // List quality options: check if directQualities has keys, then if video.qualities exists, else show standard mock options
-  const qualityOptions = Object.keys(directQualities).length > 0
-    ? ['auto', ...Object.keys(directQualities)]
-    : (video && video.qualities && Object.keys(video.qualities).length > 0
-       ? ['auto', ...Object.keys(video.qualities)]
-       : ['auto', '1080p', '720p', '480p', '360p']);
+  // Quality options: only show real extracted qualities, fallback to 'auto' while extracting
+  const hasRealQualities = Object.keys(directQualities).length > 0;
+  const isExtracting = loadingStream || !hasRealQualities;
+  
+  const qualityOptions = hasRealQualities
+    ? ['auto', ...Object.keys(directQualities).sort((a, b) => {
+        const heightA = parseInt(a.replace('p', '')) || 0;
+        const heightB = parseInt(b.replace('p', '')) || 0;
+        return heightB - heightA; // descending: 1080p, 720p, 480p...
+      })]
+    : ['auto'];
+
+  // Selected quality validation — if user picked a quality that's no longer available, fall back to auto
+  const validatedQuality = hasRealQualities && directQualities[selectedQuality] 
+    ? selectedQuality 
+    : (hasRealQualities ? 'auto' : selectedQuality);
+  
+  // Use validated quality for stream resolution
+  const effectiveQuality = validatedQuality === 'auto' 
+    ? getNetworkSuggestedQuality() 
+    : validatedQuality;
 
   const handlePiPToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1572,7 +1587,7 @@ const handleError = () => {
                           </button>
                           <button className="yt-settings-menu-item" onClick={(e) => { e.stopPropagation(); setSettingsSubMenu('quality'); }}>
                             <span className="yt-settings-menu-label">Quality</span>
-                            <span className="yt-settings-menu-value">{selectedQuality.toUpperCase()}</span>
+                            <span className="yt-settings-menu-value">{validatedQuality.toUpperCase()}</span>
                             <span className="yt-settings-menu-arrow">&rsaquo;</span>
                           </button>
                           <button className="yt-settings-menu-item" onClick={(e) => { e.stopPropagation(); handleAmbientModeToggle(); }}>
@@ -1612,16 +1627,26 @@ const handleError = () => {
                             <span>Quality</span>
                           </button>
                           <hr className="yt-settings-divider" />
-                          {qualityOptions.map(option => (
-                            <button 
-                              key={option} 
-                              className={`yt-settings-sub-item ${selectedQuality === option ? 'active' : ''}`}
-                              onClick={(e) => { e.stopPropagation(); setSelectedQuality(option); setSettingsOpen(false); }}
-                            >
-                              {selectedQuality === option && <span className="yt-settings-check">&#10003;</span>}
-                              <span style={{ textTransform: 'uppercase' }}>{option}</span>
-                            </button>
-                          ))}
+                          {isExtracting ? (
+                            <div className="yt-settings-loading">
+                              <div className="yt-settings-spinner"></div>
+                              <span>Loading available qualities...</span>
+                            </div>
+                          ) : (
+                            <>
+                              {qualityOptions.map(option => (
+                                <button 
+                                  key={option} 
+                                  className={`yt-settings-sub-item ${validatedQuality === option ? 'active' : ''}`}
+                                  onClick={(e) => { e.stopPropagation(); setSelectedQuality(option); setSettingsOpen(false); }}
+                                  disabled={option !== 'auto' && !directQualities[option]}
+                                >
+                                  {validatedQuality === option && <span className="yt-settings-check">&#10003;</span>}
+                                  <span style={{ textTransform: 'uppercase' }}>{option}</span>
+                                </button>
+                              ))}
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

@@ -1,310 +1,52 @@
+@import './theme/ThemeSystem.css';
+
+/* ─── Legacy compatibility (remove after full migration) ─── */
+/* The new theme system handles all theming via CSS custom properties.
+   Keep minimal legacy vars for components not yet migrated. */
+
 :root {
-  /* ─── YouTube OLED Dark Mode Default ─── */
-  --yt-bg-main: #000000;
-  --yt-bg-elevated: #0e0e0e;
-  --yt-bg-secondary: #161616;
-  --yt-bg-hover: rgba(255, 255, 255, 0.1);
-  --yt-text-primary: #ffffff;
-  --yt-text-secondary: rgba(255, 255, 255, 0.7);
-  --yt-border-color: rgba(255, 255, 255, 0.08);
-  --yt-brand-red: #ff0033;
-  --yt-accent: #ff0033;
-  --yt-accent-soft: #ff5357;
-  --yt-accent-deep: #cc0028;
-  --yt-subscribe-bg: #ff0033;
-  --yt-subscribe-color: #ffffff;
-  --yt-subscribed-bg: rgba(255, 255, 255, 0.1);
-  --yt-subscribed-color: #ffffff;
-  --yt-bg-card: rgba(18, 18, 18, 0.95);
-  --yt-bg-pill: rgba(255, 255, 255, 0.08);
-  --yt-bg-pill-hover: rgba(255, 255, 255, 0.16);
-  --yt-skeleton-bg: rgba(255, 255, 255, 0.06);
-  --yt-skeleton-bg-active: rgba(255, 255, 255, 0.12);
-  --yt-accent-gradient: linear-gradient(135deg, #ff0033 0%, #ff4d6d 100%);
-  --yt-apple-easing: cubic-bezier(0.16, 1, 0.3, 1);
-  --yt-bounce-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --yt-glass-bg: rgba(14, 14, 14, 0.75);
-  --yt-glass-border: rgba(255, 255, 255, 0.08);
-  --yt-shadow-glow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --yt-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --yt-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.6);
-  --yt-radius-sm: 8px;
-  --yt-radius-md: 12px;
-  --yt-radius-lg: 16px;
-  --yt-radius-xl: 20px;
-  --yt-motion-fast: 0.18s;
-  --yt-motion-med: 0.35s;
-  --yt-motion-slow: 0.6s;
+  /* Legacy fallbacks for unmigrated components */
+  --yt-bg-main: var(--bg-main);
+  --yt-bg-elevated: var(--bg-elevated);
+  --yt-bg-secondary: var(--bg-secondary);
+  --yt-bg-hover: var(--bg-hover);
+  --yt-text-primary: var(--text-primary);
+  --yt-text-secondary: var(--text-secondary);
+  --yt-border-color: var(--border-color);
+  --yt-brand-red: var(--brand-red);
+  --yt-accent: var(--accent);
+  --yt-accent-soft: var(--accent-soft);
+  --yt-accent-deep: var(--accent-deep);
+  --yt-subscribe-bg: var(--accent);
+  --yt-subscribe-color: var(--text-inverse);
+  --yt-subscribed-bg: var(--bg-pill);
+  --yt-subscribed-color: var(--text-primary);
+  --yt-bg-card: var(--bg-card);
+  --yt-bg-pill: var(--bg-pill);
+  --yt-bg-pill-hover: var(--bg-pill-hover);
+  --yt-skeleton-bg: var(--bg-skeleton);
+  --yt-skeleton-bg-active: var(--bg-skeleton-active);
+  --yt-accent-gradient: var(--accent-gradient);
+  --yt-apple-easing: var(--easing-apple);
+  --yt-bounce-easing: var(--easing-bounce);
+  --yt-glass-bg: var(--glass-bg);
+  --yt-glass-border: var(--glass-border);
+  --yt-shadow-glow: var(--shadow-glow);
+  --yt-shadow-card: var(--shadow-card);
+  --yt-shadow-hover: var(--shadow-hover);
+  --yt-radius-sm: var(--radius-sm);
+  --yt-radius-md: var(--radius-md);
+  --yt-radius-lg: var(--radius-lg);
+  --yt-radius-xl: var(--radius-xl);
+  --yt-motion-fast: var(--motion-fast);
+  --yt-motion-med: var(--motion-med);
+  --yt-motion-slow: var(--motion-slow);
 }
 
-[data-theme='dark'] {
-  --yt-bg-main: #000000;
-  --yt-bg-elevated: #0e0e0e;
-  --yt-bg-secondary: #131313;
-  --yt-bg-hover: rgba(255, 255, 255, 0.1);
-  --yt-text-primary: #ffffff;
-  --yt-text-secondary: rgba(255, 255, 255, 0.7);
-  --yt-border-color: rgba(255, 255, 255, 0.08);
-  --yt-brand-red: #ff0033;
-  --yt-accent: #ff0033;
-  --yt-accent-soft: #ff5357;
-  --yt-accent-deep: #e10111;
-  --yt-subscribe-bg: #ff0033;
-  --yt-subscribe-color: #ffffff;
-  --yt-subscribed-bg: rgba(255, 255, 255, 0.12);
-  --yt-subscribed-color: #ffffff;
-  --yt-bg-card: #0e0e0e;
-  --yt-bg-pill: rgba(255, 255, 255, 0.08);
-  --yt-bg-pill-hover: rgba(255, 255, 255, 0.18);
-  --yt-skeleton-bg: #1c1b1b;
-  --yt-skeleton-bg-active: #2a2a2a;
-  --yt-accent-gradient: linear-gradient(135deg, #ff0033 0%, #e10111 100%);
-  --yt-glass-bg: rgba(14, 14, 14, 0.82);
-  --yt-glass-border: rgba(255, 255, 255, 0.1);
-  --yt-shadow-glow: 0 8px 32px rgba(255, 0, 51, 0.25);
-  --yt-shadow-card: 0 2px 10px rgba(0, 0, 0, 0.8);
-  --yt-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.9);
-}
-
-/* ── Stitch OLED Redesign Utility Classes ── */
-.crimson-glow {
-  box-shadow: 0 0 24px rgba(255, 0, 51, 0.45);
-}
-.crimson-glow-sm {
-  box-shadow: 0 0 12px rgba(255, 0, 51, 0.35);
-}
-.glass-dock {
-  background: rgba(10, 10, 10, 0.88);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-.glass-pill {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  display: inline-block;
-  vertical-align: middle;
-  line-height: 1;
-}
-.material-symbols-outlined.fill-icon,
-.material-symbols-outlined.fill-1 {
-  font-variation-settings: 'FILL' 1;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: auto;
-}
-
-body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
-    'Segoe UI', 'Roboto', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--yt-bg-main);
-  color: var(--yt-text-primary);
-  transition: background-color 0.4s var(--yt-apple-easing), color 0.4s var(--yt-apple-easing);
-  -webkit-overflow-scrolling: touch;
-  overflow-x: clip;
-}
-
-code {
-  font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
-
-.App {
-  min-height: 100vh;
-  background-color: var(--yt-bg-main);
-  color: var(--yt-text-primary);
-  transition: background-color 0.4s var(--yt-apple-easing);
-}
-
-/* â”€â”€â”€ Apple-style scrollbars â”€â”€â”€ */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 0, 51, 0.25);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  transition: background 0.3s ease;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 0, 51, 0.45);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-/* â”€â”€â”€ Global micro-interaction layer â”€â”€â”€
-   Apple TV style: har clickable cheez pe bouncy scale,
-   focus rings, glass hovers. Sab kuch consistent motion ke saath. */
-
-button {
-  font-family: inherit;
-  transition: transform var(--yt-motion-fast) var(--yt-bounce-easing),
-    background-color var(--yt-motion-fast) var(--yt-apple-easing),
-    box-shadow var(--yt-motion-fast) var(--yt-apple-easing),
-    color var(--yt-motion-fast) var(--yt-apple-easing),
-    opacity var(--yt-motion-fast) var(--yt-apple-easing);
-}
-button:hover {
-  transform: translateY(-1px) scale(1.03);
-}
-button:active {
-  transform: translateY(0) scale(0.95);
-}
-button:focus-visible {
-  outline: 2px solid var(--yt-accent);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-  transition: color var(--yt-motion-fast) var(--yt-apple-easing),
-    opacity var(--yt-motion-fast) var(--yt-apple-easing);
-}
-a:hover {
-  opacity: 0.85;
-}
-
-input, textarea, select {
-  font-family: inherit;
-  transition: border-color var(--yt-motion-fast) var(--yt-apple-easing),
-    box-shadow var(--yt-motion-fast) var(--yt-apple-easing),
-    background-color var(--yt-motion-fast) var(--yt-apple-easing);
-}
-
-/* â”€â”€â”€ Reusable animation primitives â”€â”€â”€ */
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.92); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes bounce-in {
-  0% { opacity: 0; transform: scale(0.85) translateY(12px); }
-  60% { opacity: 1; transform: scale(1.05) translateY(-3px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-@keyframes shimmer-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
-}
-
-@keyframes float-soft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 0, 51, 0.35); }
-  50% { box-shadow: 0 0 24px 6px rgba(255, 0, 51, 0.2); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Entrance animation helper â€” every page mount gets Apple-style fade-up */
-.page-enter {
-  animation: fade-in-up var(--yt-motion-slow) var(--yt-apple-easing) both;
-}
-
-/* Skeleton shimmer for loaders */
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  background: var(--yt-skeleton-bg);
-  border-radius: var(--yt-radius-sm);
-}
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, var(--yt-skeleton-bg-active), transparent);
-  animation: shimmer-sweep 1.6s infinite;
-}
-
-/* Device detection overrides kept */
-html[data-device='phone'] body {
-  overflow-x: clip;
-}
-html[data-device='phone'] .App {
-  width: 100%;
-  min-width: 0;
-}
-html[data-device='phone'] .navbar {
-  padding: 0 12px;
-}
-html[data-device='phone'] .navbar-center {
-  max-width: none;
-  margin: 0 8px;
-}
-html[data-device='phone'] .logo-text {
-  display: none;
-}
-html[data-device='phone'] .voice-search-btn {
-  display: none;
-}
-html[data-device='phone'] .sidebar {
-  display: none !important;
-}
-html[data-device='phone'] .main-content,
-html[data-device='phone'] .main-content.sidebar-open,
-html[data-device='phone'] .main-content.sidebar-closed {
-  margin-left: 0 !important;
-  padding: 12px !important;
-}
-html[data-device='phone'] .video-grid {
-  grid-template-columns: 1fr !important;
-  gap: 20px 0 !important;
-}
-html[data-device='phone'] .category-chips {
-  top: 56px !important;
-  margin-bottom: 16px !important;
-}
-html[data-device='phone'] .watch-content,
-html[data-device='phone'] .watch-content.sidebar-open,
-html[data-device='phone'] .watch-content.sidebar-closed {
-  margin-left: 0 !important;
-  padding: 12px !important;
-}
-html[data-device='desktop'] .video-grid {
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+/* Remove dark mode — light theme only */
+[data-theme="dark"],
+.dark {
+  /* These are kept for backward compat but theme system overrides */
 }
 
 @media (prefers-reduced-motion: reduce) {

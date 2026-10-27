@@ -1,11 +1,11 @@
 "use client";
 // @ts-nocheck
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import useAuthStore from '@/store/authStore';
-import { getCookie } from '@/utils/cookies';
 import { initSmoothScroll } from '@/utils/smoothScroll';
 import MobileBottomNav from '@/components/MobileBottomNav/MobileBottomNav';
-import '../index.css';
+import { ThemeProvider } from '@/theme/ThemeSystem';
+import '@/theme/ThemeSystem.css';
 import '../App.css';
 
 export default function RootLayout({
@@ -36,36 +36,29 @@ export default function RootLayout({
     };
   }, []);
 
+  // Initialize device detection (shared with inline script)
   useEffect(() => {
-    const savedTheme = typeof window !== 'undefined' ? (localStorage.getItem('yt_theme') || getCookie('yt_theme') || 'dark') : 'dark';
-    
-    const applyTheme = (theme) => {
-      let resolved = theme;
-      if (theme === 'device' && typeof window !== 'undefined') {
-        resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      document.body.setAttribute('data-theme', resolved);
+    const d = document.documentElement;
+    const ua = navigator.userAgent;
+    const isPhone = /Android|iPhone|iPod|iPad|Windows Phone|Mobile|Opera Mini|IEMobile/i.test(ua) || (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth, window.innerHeight) < 768);
+    d.setAttribute('data-device', isPhone ? 'phone' : 'desktop');
+    const handleResize = () => {
+      const now = window.matchMedia('(max-width: 640px)').matches || /Android|iPhone|iPod|iPad|Mobile/i.test(navigator.userAgent);
+      d.setAttribute('data-device', now ? 'phone' : 'desktop');
     };
-
-    applyTheme(savedTheme);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
-    <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){
-  window.exports = window.exports || {};
-  window.module = window.module || { exports: window.exports };
-  var d = document.documentElement;
-  d.setAttribute('data-theme', 'dark');
-  d.classList.add('dark');
-  document.body && document.body.setAttribute('data-theme', 'dark');
   var d = document.documentElement;
   var ua = navigator.userAgent;
   var isPhone = /Android|iPhone|iPod|iPad|Windows Phone|Mobile|Opera Mini|IEMobile/i.test(ua) || (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth, window.innerHeight) < 768);
@@ -78,10 +71,12 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="dark" data-theme="dark" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <div className="App">
-          {children}
-          <MobileBottomNav />
+          <ThemeProvider>
+            {children}
+            <MobileBottomNav />
+          </ThemeProvider>
         </div>
       </body>
     </html>

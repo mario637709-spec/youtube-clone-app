@@ -7,6 +7,7 @@ import useAuthStore from '@/store/authStore';
 import AuthModal from '../AuthModal/AuthModal';
 import { getCookie, setCookie } from '@/utils/cookies';
 import { apiClient } from '@/utils/api';
+import { ThemeSelector } from '@/theme/ThemeSystem';
 import './Navbar.css';
 
 const Navbar = ({ onMenuClick }) => {
@@ -412,18 +413,9 @@ const Navbar = ({ onMenuClick }) => {
                   <span className="yt-sub-title">Appearance</span>
                 </div>
                 <hr className="yt-menu-divider" />
-                <button className={`yt-sub-item ${theme === 'device' ? 'active' : ''}`} onClick={() => handleThemeChange('device')}>
-                  {theme === 'device' && <span className="yt-check-icon">&#10003;</span>}
-                  <span className="yt-sub-text">Use device theme</span>
-                </button>
-                <button className={`yt-sub-item ${theme === 'dark' ? 'active' : ''}`} onClick={() => handleThemeChange('dark')}>
-                  {theme === 'dark' && <span className="yt-check-icon">&#10003;</span>}
-                  <span className="yt-sub-text">Dark theme</span>
-                </button>
-                <button className={`yt-sub-item ${theme === 'light' ? 'active' : ''}`} onClick={() => handleThemeChange('light')}>
-                  {theme === 'light' && <span className="yt-check-icon">&#10003;</span>}
-                  <span className="yt-sub-text">Light theme</span>
-                </button>
+                <div style={{ padding: '8px' }}>
+                  <ThemeSelector />
+                </div>
               </div>
             )}
 
