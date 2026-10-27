@@ -101,15 +101,17 @@ jobs:
       - name: Run Android Emulator and Test APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: google_apis
+          api-level: 29
+          target: default
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_4
           disable-animations: true
-          emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-snapshot -no-boot-anim
+          emulator-options: -no-window -no-audio -gpu swiftshader_indirect
           script: |
             echo "Waiting for Android device to boot..."
             adb wait-for-device
+            until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 2; done
+            adb shell input keyevent 82 || true
             
             echo "Installing APK..."
             adb install apk_folder/*.apk
