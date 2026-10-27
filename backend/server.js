@@ -1,8 +1,12 @@
 // Configure public DNS servers and prefer IPv4 to avoid local ISP DNS resolution failures and IPv6 connection timeouts
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
+if (!process.env.RENDER && !process.env.VERCEL) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+    if (dns.setDefaultResultOrder) {
+      dns.setDefaultResultOrder('ipv4first');
+    }
+  } catch (e) {}
 }
 const fs = require('fs');
 const path = require('path');
@@ -55,68 +59,6 @@ if (!process.env.RENDER && !process.env.VERCEL) {
 
 const app = express();
 
-// Proxy YouTube assets needed for client-side PO token generation
-const axios = require('axios');
-app.use('/s/player', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
-app.get('/s/player/*', async (req, res) => {
-  try {
-    // PO-token generation needs the VENDOR base.js (ytcfg preload + inject.js
-    // appended). Everything else — including youtubei.js/Tier 2 decipher which
-    // must match the live player version — gets the REAL base.js proxied
-    // through (browser fetch is CORS-blocked directly, so it comes here).
-    const wantVendor = req.query.vendor === '1';
-    if (req.originalUrl.endsWith('base.js') && wantVendor) {
-      const path = require('path');
-      const vendorBaseJsPath = path.join(__dirname, './node_modules/youtube-po-token-generator/vendor/base.js');
-      const injectJsPath = path.join(__dirname, './node_modules/youtube-po-token-generator/lib/inject.js');
-      
-      let baseContent = fs.readFileSync(vendorBaseJsPath, 'utf8');
-      const injectContent = fs.readFileSync(injectJsPath, 'utf8');
-      
-      // Prepend the page's ytcfg shim + config (extracted from the vendor
-      // index.html) — base.js/inject.js reference the global ytcfg which the
-      // real YouTube page defines before loading base.js.
-      const ytcfgPreloadPath = path.join(__dirname, './ytcfg-preload.js');
-      let ytcfgPreload = '';
-      if (fs.existsSync(ytcfgPreloadPath)) {
-        ytcfgPreload = fs.readFileSync(ytcfgPreloadPath, 'utf8');
-      }
-      
-      // Inject inject.js at the end of the IIFE closure of base.js so it has access to local variables (bOa, g)
-      baseContent = baseContent.replace(/}\s*\)\(_yt_player\);\s*$/, (matched) => `;${injectContent};${matched}`);
-
-      // ytcfg preload must come BEFORE base.js in the same script scope so the
-      // closure vars (_yt_player) stay accessible and ytcfg is defined.
-      const composed = `${ytcfgPreload}\n${baseContent}`;
-      res.setHeader('Content-Type', 'application/javascript');
-      res.setHeader('Cache-Control', 'no-cache');
-      return res.send(composed);
-    }
-
-    const targetUrl = `https://www.youtube.com${req.originalUrl}`;
-    const response = await axios.get(targetUrl, {
-      responseType: 'stream',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-    res.status(response.status);
-    if (response.headers['content-type']) {
-      res.setHeader('Content-Type', response.headers['content-type']);
-    }
-    response.data.pipe(res);
-  } catch (err) {
-    console.error('[AssetProxy] Error proxying:', req.originalUrl, err.message);
-    res.status(500).send(err.message);
-  }
-});
-
 // Serve static videos folder
 app.use('/videos', express.static(path.join(__dirname, '../videos')));
 
@@ -142,14 +84,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.text({ type: 'application/xml' })); // Support parsing raw Atom XML feeds from WebSub
 
-// ── Streaming Microservices ──────────────────────────────────────
-// Start health monitor (pings Piped + Invidious every 2 min)
-const healthMonitor = require('./streaming/healthMonitor');
-healthMonitor.start();
-
 // Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'YouTube Clone API is running...', streamingSystem: 'active' });
+  res.json({
+    message: 'YouTube Clone API is running...',
+    streamingSystem: 'device-direct-only',
+    serverVideoBytes: false,
+    proxies: false
+  });
 });
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/videos', require('./routes/videos'));
@@ -160,14 +102,8 @@ app.use('/api/webhooks', require('./routes/webhook'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/feed', require('./routes/feed'));
 
-// ── NEW Streaming System Routes ───────────────────────────────────
-// GET /api/stream/auto/:videoId    → Smart stream (all fallbacks)
-// GET /api/stream/proxy/:videoId   → Own bandwidth proxy
-// GET /api/stream/url/:videoId     → Raw URL only (no bandwidth)
-// GET /api/stream/piped/:videoId   → Piped redirect (free)
-// GET /api/stream/invidious/:videoId → Invidious redirect (free)
-// GET /api/stream/health           → System health dashboard
-// GET /api/stream/stats            → Live active streams
+// Client-direct mode: only health + analytics remain.
+// The retired playback/proxy endpoints return 410 Gone.
 app.use('/api/stream', require('./streaming/routes'));
 
 const PORT = process.env.PORT || 5000;

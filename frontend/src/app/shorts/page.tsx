@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { getApiBaseUrl } from '@/config';
+import { getClientDirectStream } from '@/utils/clientStream';
 import '@/pages/Shorts.css';
 
 const Shorts = () => {
@@ -164,7 +165,16 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
   const [showHeart, setShowHeart] = useState(false);
   const [heartCoords, setHeartCoords] = useState({ x: 0, y: 0 });
   const [progress, setProgress] = useState(0);
+  const [resolvedUrl, setResolvedUrl] = useState('');
+  const [resolvedAudioUrl, setResolvedAudioUrl] = useState('');
+  const [loadingStream, setLoadingStream] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const lastTapRef = useRef(0);
+  const retryRef = useRef(0);
+  const audioRef = useRef(null);
+
+  const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
+  const isYoutube = !!(ytId && /^[a-zA-Z0-9_-]{11}$/.test(ytId));
 
   const formatCount = (count: number) => {
     if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
@@ -173,21 +183,76 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
   };
 
   const getShortVideoSrc = () => {
-    const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
-    const apiBase = getApiBaseUrl();
-    if (ytId && /^[a-zA-Z0-9_-]{11}$/.test(ytId)) {
-      return `${apiBase}/stream/auto/${ytId}?quality=360p`;
-    }
-    let src = video.videoUrl || '';
-    if (src && src.includes('/api/videos/stream/')) {
-      const poToken = window.youtubePoToken || localStorage.getItem('youtube_po_token') || '';
-      const visitorData = window.youtubeVisitorData || localStorage.getItem('youtube_visitor_data') || '';
-      if (poToken && visitorData) {
-        src += `${src.includes('?') ? '&' : '?'}poToken=${encodeURIComponent(poToken)}&visitorData=${encodeURIComponent(visitorData)}`;
-      }
-    }
-    return src;
+    if (resolvedUrl) return resolvedUrl;
+    if (isYoutube) return '';
+    return video.videoUrl || '';
   };
+
+  const handleVideoError = () => {
+    if (!isYoutube) {
+      setHasError(true);
+      return;
+    }
+    if (retryRef.current === 0) {
+      retryRef.current = 1;
+      console.warn('[Shorts] Direct CDN failed - re-extracting once from device...');
+      setHasError(false);
+      setResolvedUrl('');
+      setResolvedAudioUrl('');
+      setRetryTick((t) => t + 1);
+      return;
+    }
+    setHasError(true);
+  };
+
+  // Resolve YouTube Shorts directly from the device (same Tier 0 as the
+  // main player). No /stream/auto, no server proxy.
+  useEffect(() => {
+    if (!isActive || !isYoutube) return;
+    let active = true;
+    setLoadingStream(true);
+    setHasError(false);
+    setResolvedUrl('');
+    setResolvedAudioUrl('');
+
+    (async () => {
+      try {
+        const res = await getClientDirectStream(ytId, '360p', {
+          skipCache: retryRef.current > 0,
+          deadlineMs: 30000
+        });
+        if (!active || !res?.bestUrl) return;
+
+        const entry = res.qualityMap?.['360p'] ||
+          Object.values(res.qualityMap || {}).find((e: any) => e && e.url === res.bestUrl);
+        const url = entry?.url || res.bestUrl;
+        const isCombined = Object.values(res.qualityMap || {}).some(
+          (e: any) => e && e.url === url && e.type === 'combined'
+        );
+        setResolvedUrl(url);
+        setResolvedAudioUrl(!isCombined ? (res.audioOnlyFormats?.[0]?.url || '') : '');
+      } catch (err: any) {
+        console.warn('[Shorts] Direct stream failed:', err?.message || err);
+        if (active) setHasError(true);
+      } finally {
+        if (active) setLoadingStream(false);
+      }
+    })();
+
+    return () => { active = false; };
+  }, [isActive, isYoutube, ytId, retryTick]);
+
+  // Last-resort timer: if direct extraction hangs, show the iframe.
+  useEffect(() => {
+    if (!isActive || !isYoutube || resolvedUrl || hasError) return;
+    const timer = setTimeout(() => {
+      if (!resolvedUrl) {
+        console.warn('[Shorts] Direct extraction timed out - enabling embed fallback');
+        setHasError(true);
+      }
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [isActive, isYoutube, resolvedUrl, hasError]);
 
   useEffect(() => {
     if (hasError) return;
@@ -197,13 +262,27 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
           playPromise
-            .then(() => setIsPlaying(true))
+            .then(() => {
+              setIsPlaying(true);
+              if (audioRef.current && resolvedAudioUrl) {
+                audioRef.current.currentTime = videoRef.current.currentTime;
+                audioRef.current.muted = videoRef.current.muted;
+                audioRef.current.play().catch(() => {});
+              }
+            })
             .catch((err) => {
               console.log('[Shorts] Autoplay unmuted failed, trying muted:', err.message);
               if (videoRef.current) {
                 videoRef.current.muted = true;
                 videoRef.current.play()
-                  .then(() => setIsPlaying(true))
+                  .then(() => {
+                    setIsPlaying(true);
+                    if (audioRef.current && resolvedAudioUrl) {
+                      audioRef.current.muted = true;
+                      audioRef.current.currentTime = videoRef.current.currentTime;
+                      audioRef.current.play().catch(() => {});
+                    }
+                  })
                   .catch(() => setIsPlaying(false));
               }
             });
@@ -216,16 +295,27 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
         setIsPlaying(false);
         setProgress(0);
       }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     }
-  }, [isActive, hasError]);
+  }, [isActive, hasError, resolvedAudioUrl, resolvedUrl]);
 
   const togglePlay = () => {
     if (hasError) return;
     if (isPlaying) {
       videoRef.current?.pause();
+      audioRef.current?.pause();
       setIsPlaying(false);
     } else {
+      if (videoRef.current) videoRef.current.muted = false;
+      if (audioRef.current) audioRef.current.muted = false;
       videoRef.current?.play();
+      if (audioRef.current && resolvedAudioUrl) {
+        audioRef.current.currentTime = videoRef.current?.currentTime || 0;
+        audioRef.current.play().catch(() => {});
+      }
       setIsPlaying(true);
     }
   };
@@ -235,6 +325,12 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
       const { currentTime, duration } = videoRef.current;
       if (duration > 0) {
         setProgress((currentTime / duration) * 100);
+      }
+      if (audioRef.current && resolvedAudioUrl) {
+        if (Math.abs(audioRef.current.currentTime - currentTime) > 0.3) {
+          audioRef.current.currentTime = currentTime;
+        }
+        audioRef.current.muted = videoRef.current.muted;
       }
     }
   };
@@ -287,27 +383,87 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
   return (
     <div className="short-slide-card" onClick={handleDoubleTap}>
       {/* Video element or fallback */}
-      {hasError ? (
-        <div className="short-video-fallback">
-          <img
-            src={video.thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=720&auto=format&fit=crop&q=80'}
-            alt={video.title}
-            className="short-bg-fallback-img"
-          />
-          <div className="fallback-error-text">Video Stream Offline</div>
-        </div>
-      ) : (
-        <video
-          ref={videoRef}
-          className="short-video-element"
-          src={getShortVideoSrc()}
-          loop
-          playsInline
-          onTimeUpdate={handleTimeUpdate}
-          onError={() => setHasError(true)}
-          poster={video.thumbnail || undefined}
-        />
-      )}
+      {(() => {
+        const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
+        if (hasError && ytId) {
+          return (
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&controls=0&loop=1&playlist=${ytId}&modestbranding=1&playsinline=1&rel=0`}
+                className="short-video-element"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                style={{ width: '100%', height: '100%', border: 'none', objectFit: 'cover' }}
+              />
+              <a
+                href={`https://www.youtube.com/shorts/${ytId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  bottom: 96,
+                  zIndex: 10,
+                  background: 'rgba(0,0,0,0.78)',
+                  color: '#fff',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  textDecoration: 'none'
+                }}
+              >
+                Open in YouTube ↗
+              </a>
+            </div>
+          );
+        }
+        if (hasError) {
+          return (
+            <div className="short-video-fallback">
+              <img
+                src={video.thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=720&auto=format&fit=crop&q=80'}
+                alt={video.title}
+                className="short-bg-fallback-img"
+              />
+              <div className="fallback-error-text">Video Stream Offline</div>
+            </div>
+          );
+        }
+        if (isYoutube && !resolvedUrl) {
+          return (
+            <div className="short-video-fallback">
+              <img
+                src={video.thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=720&auto=format&fit=crop&q=80'}
+                alt={video.title}
+                className="short-bg-fallback-img"
+              />
+              <div className="fallback-error-text">{loadingStream ? 'Loading video...' : 'Preparing video...'}</div>
+            </div>
+          );
+        }
+        return (
+          <>
+            <video
+              ref={videoRef}
+              className="short-video-element"
+              src={getShortVideoSrc() || undefined}
+              loop
+              playsInline
+              onTimeUpdate={handleTimeUpdate}
+              onError={handleVideoError}
+              poster={video.thumbnail || undefined}
+            />
+            {resolvedAudioUrl && (
+              <audio
+                ref={audioRef}
+                src={resolvedAudioUrl}
+                loop
+                style={{ display: 'none' }}
+              />
+            )}
+          </>
+        );
+      })()}
 
       {/* Ambient OLED Vignette Scrim */}
       <div className="short-scrim-top" />

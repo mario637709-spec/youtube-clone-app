@@ -1,10 +1,9 @@
 "use client";
 // @ts-nocheck
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import useAuthStore from '@/store/authStore';
 import { getCookie } from '@/utils/cookies';
 import { initSmoothScroll } from '@/utils/smoothScroll';
-import { getApiBaseUrl } from '@/config';
 import MobileBottomNav from '@/components/MobileBottomNav/MobileBottomNav';
 import '../index.css';
 import '../App.css';
@@ -14,7 +13,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [iframeKey, setIframeKey] = useState(0);
   const loadUser = useAuthStore(state => state.loadUser);
 
   useEffect(() => {
@@ -52,32 +50,6 @@ export default function RootLayout({
     applyTheme(savedTheme);
   }, []);
 
-  useEffect(() => {
-    const handleMessage = (e) => {
-      if (e.data && e.data.type === 'YOUTUBE_PO_TOKEN') {
-        const { poToken, visitorData } = e.data;
-        window.youtubePoToken = poToken;
-        window.youtubeVisitorData = visitorData;
-        localStorage.setItem('youtube_po_token', poToken);
-        localStorage.setItem('youtube_visitor_data', visitorData);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIframeKey(prev => prev + 1);
-    }, 30 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const API_BASE_URL = getApiBaseUrl();
-  const embedProxyUrl = `${API_BASE_URL}/videos/proxy/youtube-embed-proxy`;
-
   return (
     <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
       <head>
@@ -110,12 +82,6 @@ export default function RootLayout({
         <div className="App">
           {children}
           <MobileBottomNav />
-          <iframe
-            key={iframeKey}
-            src={embedProxyUrl}
-            style={{ display: 'none', width: 0, height: 0, border: 'none' }}
-            title="youtube-token-generator"
-          />
         </div>
       </body>
     </html>

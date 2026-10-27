@@ -27,6 +27,25 @@ try {
     serviceAccount = require(serviceAccountPath);
   }
 
+  // Load from base64 encoded bundle (sa-db1.enc or firebase-sa.enc) for Render
+  if (!serviceAccount) {
+    const encPaths = [
+      path.join(__dirname, './firebase-sa.enc'),
+      path.join(__dirname, './sa-db1.enc')
+    ];
+    for (const p of encPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const raw = fs.readFileSync(p, 'utf8').trim();
+          serviceAccount = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+          break;
+        } catch (e) {
+          console.warn('Failed to decode service account from', p, e.message);
+        }
+      }
+    }
+  }
+
   if (serviceAccount && !forceLocalDb) {
     const projectId = serviceAccount.project_id;
     const storageBucket = process.env.FIREBASE_STORAGE_BUCKET

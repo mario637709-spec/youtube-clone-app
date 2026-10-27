@@ -704,62 +704,39 @@ exports.deleteVideo = async (req, res) => {
 // 7. STREAM VIDEO (Raw MP4 Streaming - No Ads! Supports multiple resolutions)
 exports.streamVideo = async (req, res) => {
   try {
-    // [FIX] Short-circuit YouTube video IDs straight to the new streaming
-    // orchestrator. The legacy DB lookup (Firestore) can hang for minutes
-    // when Firestore/Mongo are unreachable, and pipeStream's old extraction
-    // path also stalls â€” redirecting avoids both.
-    if (req.params.id && /^[a-zA-Z0-9_-]{11}$/.test(req.params.id)) {
-      const qp = [];
-      if (req.query.quality) qp.push(`quality=${encodeURIComponent(req.query.quality)}`);
-      if (req.query.type) qp.push(`type=${encodeURIComponent(req.query.type)}`);
-      const qs = qp.length ? `?${qp.join('&')}` : '';
-      return res.redirect(302, `/api/stream/auto/${encodeURIComponent(req.params.id)}${qs}`);
+    const id = req.params.id;
+
+    // YouTube IDs are never handled by the server. The device fetches
+    // the player response and plays googlevideo directly.
+    if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
+      return res.status(410).json({
+        error: 'YouTube playback is client-direct. Use the app player.',
+        code: 'DIRECT_ONLY'
+      });
     }
 
-    let video = await dbFirestore.getVideoById(req.params.id);
-    const isYoutubeUrl = video && (video.youtube_id || (video.videoUrl && (video.videoUrl.includes('youtube.com') || video.videoUrl.includes('youtu.be'))));
-    const isYoutube = isYoutubeUrl && video.storageLocation !== 'Local';
+    let video = await dbFirestore.getVideoById(id);
+    const isYoutube = video
+      && video.storageLocation !== 'Local'
+      && (video.youtube_id || (video.videoUrl && (video.videoUrl.includes('youtube.com') || video.videoUrl.includes('youtu.be'))));
 
-    // [STOP BY ADMIN - TEMPORARY]
-    // Only stop the old YouTube streaming. Local video streaming must remain active!
     if (isYoutube) {
-      return res.redirect(302, `/api/stream/auto/${encodeURIComponent(req.params.id)}`);
+      return res.status(410).json({
+        error: 'YouTube playback is client-direct. Use the app player.',
+        code: 'DIRECT_ONLY'
+      });
     }
 
     if (req.query.download === 'true') {
-      const filename = video ? (video.title || 'video').replace(/[^a-zA-Z0-9]/g, '_') : req.params.id;
+      const filename = video ? (video.title || 'video').replace(/[^a-zA-Z0-9]/g, '_') : id;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}.mp4"`);
     }
 
     if (!video) {
-      // Fallback: If not in DB, but looks like an 11-char YouTube ID, just stream it directly!
-      if (req.params.id && req.params.id.length === 11) {
-        return res.redirect(302, `/api/stream/auto/${encodeURIComponent(req.params.id)}`);
-      }
       return res.status(404).send('Video not found');
     }
 
-    const targetQuality = req.query.quality;
-
-    // 1. If it is a YouTube video, stream directly from YouTube
-    if (isYoutube) {
-      const youtubeStreamAgent = require('../utils/youtubeStreamAgent');
-      let ytId = video.youtube_id;
-      if (!ytId && video.videoUrl) {
-        try {
-          const urlParams = new URLSearchParams(new URL(video.videoUrl).search);
-          ytId = urlParams.get('v') || video.videoUrl.split('/').pop().split('?')[0];
-        } catch (e) {
-          ytId = video.videoUrl.split('/').pop().split('?')[0];
-        }
-      }
-      if (ytId && ytId.length === 11) {
-        console.log(`[Stream] Streaming video ${ytId} from YouTube directly...`);
-        return await youtubeStreamAgent.pipeStream(ytId, req, res);
-      }
-    }
-
-    // 2. If it's in Google Drive, stream it using our GDrive API
+    // 1. If it's in Google Drive, stream it using our GDrive API
     if (video.storageLocation === 'GDrive' && video.gdriveId) {
       const gdriveApi = require('../utils/gdriveApi');
       const streamUrl = await gdriveApi.getStreamUrl(video.gdriveId);

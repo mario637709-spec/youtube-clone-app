@@ -51,7 +51,18 @@ function loadServiceAccount(dbName) {
     }
   }
 
-  // 2) From local tmp/ file
+  // 2) From base64 encoded config bundle (.enc) - works seamlessly on Render!
+  const encFile = path.join(__dirname, '..', 'config', `sa-${dbName}.enc`);
+  if (fs.existsSync(encFile)) {
+    try {
+      const raw = fs.readFileSync(encFile, 'utf8').trim();
+      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    } catch (e) {
+      console.warn(`[rtdb] Failed to decode ${encFile}:`, e.message);
+    }
+  }
+
+  // 3) From local config/ or tmp/ file
   const localFile = path.join(__dirname, '..', 'tmp', cfg.saFile);
   if (fs.existsSync(localFile)) {
     try {
@@ -61,7 +72,16 @@ function loadServiceAccount(dbName) {
     }
   }
 
-  // 3) Fallback: if db1 service account is present in credentials.json
+  const configFile = path.join(__dirname, '..', 'config', cfg.saFile);
+  if (fs.existsSync(configFile)) {
+    try {
+      return JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    } catch (e) {
+      console.warn(`[rtdb] Failed to read ${configFile}:`, e.message);
+    }
+  }
+
+  // 4) Fallback: if db1 service account is present in credentials.json
   if (dbName === 'db1') {
     const credPath = path.join(__dirname, '..', 'config', 'credentials.json');
     if (fs.existsSync(credPath)) {
@@ -140,6 +160,27 @@ async function getVideo(id) {
   return null;
 }
 
+let cachedIndexIds = null;
+let lastIndexFetchTime = 0;
+async function getIndexIds() {
+  if (cachedIndexIds && (Date.now() - lastIndexFetchTime < 10 * 60 * 1000)) {
+    return cachedIndexIds;
+  }
+  const db1 = db('db1');
+  if (!db1) return [];
+  try {
+    const snap = await db1.ref('video_index').get();
+    if (snap.exists()) {
+      cachedIndexIds = Object.keys(snap.val() || {});
+      lastIndexFetchTime = Date.now();
+      return cachedIndexIds;
+    }
+  } catch (e) {
+    console.warn('[rtdb] getIndexIds failed:', e.message);
+  }
+  return cachedIndexIds || [];
+}
+
 async function getFeedVideos({ category, page = 1, limit = 20 } = {}) {
   const db1 = db('db1');
   if (!db1) return null;
@@ -155,10 +196,30 @@ async function getFeedVideos({ category, page = 1, limit = 20 } = {}) {
       if (snap.exists()) ids = snap.val();
     }
 
-    if (!ids || ids.length === 0) return null;
+    let allIds = Array.isArray(ids) ? ids : (ids ? Object.keys(ids) : []);
 
     const start = (page - 1) * limit;
-    const pageIds = ids.slice(start, start + limit);
+
+    // If user scrolled past the initial top list, pull from the 19,439 video_index!
+    if (start >= allIds.length) {
+      const indexIds = await getIndexIds();
+      if (indexIds && indexIds.length > 0) {
+        const offset = (start - allIds.length) % indexIds.length;
+        const pageIds = indexIds.slice(offset, offset + limit);
+        const docs = await Promise.all(pageIds.map(id => getVideo(id)));
+        return docs.filter(Boolean);
+      }
+    }
+
+    let pageIds = allIds.slice(start, start + limit);
+    if (pageIds.length < limit) {
+      const indexIds = await getIndexIds();
+      if (indexIds && indexIds.length > 0) {
+        const needed = limit - pageIds.length;
+        const extras = indexIds.slice(0, needed);
+        pageIds = pageIds.concat(extras);
+      }
+    }
 
     const docs = await Promise.all(pageIds.map(id => getVideo(id)));
     return docs.filter(Boolean);
@@ -175,11 +236,15 @@ async function getShortsFeed({ page = 1, limit = 20 } = {}) {
   try {
     const snap = await db1.ref('feed/top_shorts').get();
     if (!snap.exists()) return null;
-    const ids = snap.val();
+    let ids = snap.val();
     if (!ids || ids.length === 0) return null;
+    if (!Array.isArray(ids)) ids = Object.keys(ids);
 
-    const start = (page - 1) * limit;
-    const pageIds = ids.slice(start, start + limit);
+    const start = ((page - 1) * limit) % ids.length;
+    let pageIds = ids.slice(start, start + limit);
+    if (pageIds.length < limit) {
+      pageIds = pageIds.concat(ids.slice(0, limit - pageIds.length));
+    }
 
     const docs = await Promise.all(pageIds.map(id => getVideo(id)));
     return docs.filter(Boolean);

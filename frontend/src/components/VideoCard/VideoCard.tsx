@@ -30,14 +30,19 @@ const VideoCard = ({ video }) => {
     const vidId = video.id || video.youtube_id || video._id;
     if (!vidId) return;
 
+    // Save exact feed scroll position so returning to feed is 100% seamless
+    if (typeof window !== 'undefined') {
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      try {
+        useVideoStore.getState().setFeedScrollPos(scrollY);
+        // Using hash prevents Capacitor WebView from trying to load a non-existent /watch file
+        window.history.pushState({ modal: 'watch', videoId: vidId }, '', '#watch');
+      } catch {}
+    }
+
     // In-place playback: opens the watch sheet overlay smoothly WITHOUT reloading
     // the page or destroying the home feed scroll position!
     setCurrentVideo(video);
-    if (typeof window !== 'undefined') {
-      try {
-        window.history.pushState({ modal: 'watch', videoId: vidId }, '', `/watch?v=${encodeURIComponent(vidId)}`);
-      } catch {}
-    }
   };
 
   // 2026-08-14: Playback speed fix — pre-warm the client-side stream

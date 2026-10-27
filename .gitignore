@@ -63,3 +63,4 @@ backend/utils/*.png
 backend/data/player-cache/
 
 backend/config/credentials.json
+backend/config/*.enc

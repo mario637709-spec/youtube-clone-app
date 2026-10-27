@@ -10,7 +10,6 @@ import { apiClient } from '@/utils/api';
 import useVideoStore from '@/store/videoStore';
 import { getGuestId } from '@/utils/analytics';
 import { initialFeed } from '@/data/initialFeed';
-import { prewarmVideos } from '@/utils/clientStream';
 import WatchClient from './watch/[id]/WatchClient';
 import '@/pages/Home.css';
 
@@ -28,13 +27,19 @@ const Home = () => {
   // Handle hardware Back button and browser popstate for in-place watch modal
   useEffect(() => {
     const handlePopState = () => {
-      if (currentVideo) {
-        setCurrentVideo(null);
+      if (useVideoStore.getState().currentVideo) {
+        useVideoStore.getState().setCurrentVideo(null);
+        setTimeout(() => {
+          const pos = useVideoStore.getState().feedScrollPos || 0;
+          if (pos > 0) {
+            window.scrollTo({ top: pos, behavior: 'instant' });
+          }
+        }, 20);
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentVideo, setCurrentVideo]);
+  }, []);
 
   // Check URL on startup: if ?v=xxx or /watch?v=xxx was opened directly, load that video
   useEffect(() => {
@@ -66,7 +71,7 @@ const Home = () => {
   // db_worker*.json = ~2.1k non-short videos). The backend stops serving
   // via hasMore once the corpus is exhausted; this cap only guards
   // against runaway requests, so it's set well above the real size.
-  const MAX_PAGES = 500;
+  const MAX_PAGES = 25000; // Allows infinite pagination through all 480k+ videos in the 3 Firebase DBs
   const LOAD_COOLDOWN_MS = 800;
 
   const extractList = (data) => (Array.isArray(data) ? data : (data && Array.isArray(data.videos) ? data.videos : []));
@@ -121,17 +126,6 @@ const Home = () => {
     };
     fetchInitialVideos();
   }, [homeCategory, setVideos]);
-
-  // 2026-08-15: Playback speed boost — home feed ke top videos ka CDN
-  // stream pre-warm karo (IndexedDB cache me URL + expiry daal do).
-  // Watch page pe player tab cache hit karega → instant play instead of
-  // 8-15s cold extraction. prewarmVideos khud idle-priority + concurrency
-  // limited hai aur in-flight dedupe share karta hai player ke saath.
-  useEffect(() => {
-    if (videos.length > 0) {
-      if (typeof prewarmVideos === 'function') { prewarmVideos(videos, 12, 3); }
-    }
-  }, [videos]);
 
   // Load more videos when scrolling
   const loadMoreVideos = async () => {
@@ -274,12 +268,15 @@ const Home = () => {
                   key={v.id}
                   className={`hero-slide ${i === heroIndex ? 'active' : ''}`}
                   onClick={() => {
-                    setCurrentVideo(v);
+                    const vidId = v.id || v.youtube_id || v._id;
                     if (typeof window !== 'undefined') {
+                      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
                       try {
-                        window.history.pushState({ modal: 'watch', videoId: v.id }, '', `/watch?v=${encodeURIComponent(v.id)}`);
+                        useVideoStore.getState().setFeedScrollPos(scrollY);
+                        window.history.pushState({ modal: 'watch', videoId: vidId }, '', '#watch');
                       } catch {}
                     }
+                    setCurrentVideo(v);
                   }}
                 >
                   <div className="hero-backdrop">
@@ -379,21 +376,20 @@ const Home = () => {
               setCurrentVideo(null);
               if (typeof window !== 'undefined') {
                 try {
-                  if (window.history.state?.modal === 'watch') {
+                  if (window.location.hash === '#watch' || window.history.state?.modal === 'watch') {
                     window.history.back();
-                  } else {
-                    window.history.replaceState({}, '', '/');
                   }
                 } catch {}
+                setTimeout(() => {
+                  const pos = useVideoStore.getState().feedScrollPos || 0;
+                  if (pos > 0) {
+                    window.scrollTo({ top: pos, behavior: 'instant' });
+                  }
+                }, 20);
               }
             }}
             onSelectVideo={(newVid) => {
               setCurrentVideo(newVid);
-              if (typeof window !== 'undefined') {
-                try {
-                  window.history.pushState({ modal: 'watch', videoId: newVid.id }, '', `/watch?v=${encodeURIComponent(newVid.id)}`);
-                } catch {}
-              }
             }}
           />
         </div>

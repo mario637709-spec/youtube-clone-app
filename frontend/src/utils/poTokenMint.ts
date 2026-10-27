@@ -14,7 +14,7 @@
 
 import { BotGuardClient } from 'bgutils-js/botguard';
 import { WebPoMinter } from 'bgutils-js/webpo';
-import { getApiBaseUrl } from '../config';
+import { nativeFetch } from './youtubeDirect';
 
 const WAA_BASE = 'https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa';
 const WAA_KEY = 'AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw';
@@ -51,7 +51,7 @@ const parseChallengeRaw = (rawData) => {
 };
 
 const waaFetch = async (endpoint, body) => {
-  const res = await fetch(`${WAA_BASE}/${endpoint}`, {
+  const res = await nativeFetch(`${WAA_BASE}/${endpoint}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json+protobuf',
@@ -82,7 +82,7 @@ const mintFresh = async (contentBinding, onLog) => {
   if (wrappedJs) {
     interpreterJs = wrappedJs;
   } else if (wrappedUrl) {
-    const res = await fetch(`https:${wrappedUrl}`);
+    const res = await nativeFetch(`https:${wrappedUrl}`);
     interpreterJs = await res.text();
   }
   if (!interpreterJs) throw new Error('No interpreter script');
@@ -130,32 +130,6 @@ const mintFresh = async (contentBinding, onLog) => {
   return poToken;
 };
 
-// ─── Server-side fallback mint (youtube-po-token-generator) ───────
-// Browser WAA (jnn-pa) mint kabhi kabhi fail/hang hota hai
-// (ERR_CONNECTION_RESET) aur ANDROID_VR 4K pe HTTP 500 de sakta hai.
-// Backend /api/stream/pot verified kaam karta hai (itag=315 4K).
-const mintViaBackend = async (onLog) => {
-  onLog?.('⏳ Backend PO token mint...');
-  const apiBase = getApiBaseUrl();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(`${apiBase}/stream/pot`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-      signal: controller.signal
-    });
-    if (!res.ok) throw new Error(`Backend mint HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data?.poToken) throw new Error('Backend mint returned no token');
-    onLog?.(`✅ Backend poToken len=${data.poToken.length}`);
-    return data.poToken;
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
 // ─── 2026-08-15 SPEED FIX ───────────────────────────────────────────
 // Problem: har video ke liye full WAA challenge (~4-6s) chalti thi
 // (WAA Create → interpreter VM → BotGuard snapshot → GenerateIT) —
@@ -186,6 +160,7 @@ const getSharedSession = async (onLog) => {
 };
 
 const doSharedSession = async (onLog) => {
+  const now = Date.now();
   // NOTE: webPoSignalOutput[0] ek FUNCTION hai jo localStorage me JSON
   // se kabhi restore nahi hota — isliye cross-page persistence impossible.
   // Per-video token cache (yt_mint_pot_*) hi reload-safe hai.
@@ -203,7 +178,7 @@ const doSharedSession = async (onLog) => {
   if (wrappedJs) {
     interpreterJs = wrappedJs;
   } else if (wrappedUrl) {
-    const res = await fetch(`https:${wrappedUrl}`);
+    const res = await nativeFetch(`https:${wrappedUrl}`);
     interpreterJs = await res.text();
   }
   if (!interpreterJs) throw new Error('No interpreter script');
@@ -278,18 +253,15 @@ export const getMintedPoToken = async (contentBinding = 'dQw4w9WgXcQ', onLog = n
       sharedMintSession = null;
     }
 
-    // 2. Full WAA fresh mint (session hi fail hui ho to)
+    // 2. Full WAA fresh mint (session hi fail hui ho to).
+    //    No backend fallback: the token must be minted on the user's
+    //    device so the player request stays tied to the user's IP.
     if (!poToken) {
       try {
         poToken = await mintFresh(contentBinding, onLog);
       } catch (e) {
-        console.warn('[poTokenMint] WAA mint failed, trying backend:', e.message);
+        console.warn('[poTokenMint] WAA mint failed:', e.message);
       }
-    }
-
-    // 3. Fallback: server-side mint (verified reliable)
-    if (!poToken) {
-      poToken = await mintViaBackend(onLog);
     }
 
     if (!poToken) return null;

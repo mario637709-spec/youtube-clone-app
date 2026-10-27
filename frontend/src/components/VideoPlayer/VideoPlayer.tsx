@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { processFormatUrl } from '@/utils/decipher';
 import { getAllDecryptedFormats } from '@/utils/innertubeDecipher';
 import { getClientDirectStream, reportStreamSource } from '@/utils/clientStream';
-import { generatePoToken } from '@/utils/poToken';
-import { getApiBaseUrl } from '@/config';
 import { fireEvent } from '@/utils/analytics';
 import './VideoPlayer.css';
 
@@ -133,8 +131,8 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
   const [loadingStream, setLoadingStream] = useState(false);
   const [streamError, setStreamError] = useState(null);
   const [isEnded, setIsEnded] = useState(false);
-  const errorRetryCountRef = useRef(0); // prevent infinite retry loop
-  const proxyRetryCountRef = useRef(0); // proxy chunk-hiccup reloads (max 1)
+  const [retryTick, setRetryTick] = useState(0);
+  const errorRetryCountRef = useRef(0); // one fresh extraction, then iframe
 
   // Real-time PO Token and Visitor Data states synced with the iframe
   const [poToken, setPoToken] = useState(() => {
@@ -181,7 +179,6 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
   const watchEndedRef = useRef(false);
   const stallTimerRef = useRef<NodeJS.Timeout | null>(null);       // stall auto-downgrade timer
   const stallDowngradedRef = useRef(false);                        // downgrade only ONCE per video
-  const prewarmedQualitiesRef = useRef<Set<string>>(new Set());    // quality pre-warm dedupe
 
   const currentVideoId = video ? String(video.id || video.youtube_id || video.videoUrl || '') : '';
 
@@ -284,6 +281,9 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
     return null;
   };
 
+  // Render-time YouTube ID (used by the iframe fallback).
+  const ytId = getYoutubeId(video);
+
   // Sync state if video changes
   useEffect(() => {
     setIsPlaying(false);
@@ -300,18 +300,25 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
     playerConfigCacheRef.current = null;
     decryptedUrlsCacheRef.current = {};
     errorRetryCountRef.current = 0; // reset error retry on video change
-    proxyRetryCountRef.current = 0;
+    setRetryTick(0);
     stallDowngradedRef.current = false;
     if (stallTimerRef.current) { clearTimeout(stallTimerRef.current); stallTimerRef.current = null; }
-    prewarmedQualitiesRef.current = new Set();
     setDirectQualities({});
     setResolvedAudioUrl('');
   }, [video]);
 
-  // Resolve stream URL for YouTube videos or other media
+  // Resolve stream URL for YouTube videos or other media.
+  // ALL YouTube work happens on the device. The Render backend is never
+  // asked to fetch a player response, base.js, or video bytes.
   useEffect(() => {
     let active = true;
-    
+
+    const withTimeout = (promise, ms, label) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms))
+      ]);
+
     const resolveStream = async () => {
       if (!video) {
         setResolvedUrl('');
@@ -319,546 +326,269 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
         setLoadingStream(false);
         return;
       }
+
       const ytId = getYoutubeId(video);
 
-      // If not a YouTube video, use normal source
+      // Non-YouTube (local upload / Drive) keeps the normal source.
       if (!ytId) {
         setResolvedUrl(getVideoSrc());
         setResolvedAudioUrl('');
         setStreamError(null);
+        setHasError(false);
         setLoadingStream(false);
         return;
       }
 
-      // ⚠️ 2026-08-15: LOGIN_REQUIRED ("Sign in to confirm you're not a
-      // bot") videos DO work with client-side ANDROID_VR+poToken extraction
-      // (verified: uParCvXpBcU got a full-file 206 URL) — the backend IOS
-      // proxy URLs cap at 2MB. So we MUST still try client extraction
-      // first (fast now with the shared WAA session); proxy is the fallback.
-      const feedStatus = (video as any)?.playabilityStatus || (video as any)?.status;
-
       setLoadingStream(true);
       setStreamError(null);
+      setHasError(false);
+      setResolvedUrl('');
+      setResolvedAudioUrl('');
 
-      // Helper to generate proxy URL fallback (Now points to the new streaming Orchestrator)
-      const getProxyFallbackUrl = (qualityName = selectedQuality, type = '') => {
-        const backendBase = getApiBaseUrl();
-        
-        // Use the new smart streaming orchestrator endpoint!
-        let streamUrl = `${backendBase}/stream/auto/${ytId || video.id}?quality=${qualityName}`;
-        
-        if (poToken && visitorData) {
-          streamUrl += `&poToken=${encodeURIComponent(poToken)}&visitorData=${encodeURIComponent(visitorData)}`;
-        }
-        return streamUrl;
-      };
+      const effectiveQuality = selectedQuality === 'auto'
+        ? getNetworkSuggestedQuality()
+        : selectedQuality;
+      const skipCache = errorRetryCountRef.current > 0;
 
-      // Instant start: immediately seed the proxy URL so Android WebView begins streaming in <0.5s!
-      const initialImmediateUrl = getProxyFallbackUrl('360p');
-      setResolvedUrl(initialImmediateUrl);
-      setLoadingStream(false);
+      // One content-bound poToken + visitorData for every tier.
+      let activePoToken = poToken;
+      let activeVisitorData = visitorData;
 
-      if (feedStatus === 'LOGIN_REQUIRED') {
-        console.warn(`[VideoPlayer] ${ytId} flagged LOGIN_REQUIRED by feed — will try client extraction (ANDROID_VR+pot) first, proxy fallback.`);
-        reportStreamSource(ytId, 'client-try');
-      }
-
-      // ⚠️ 2026-08: the proxy ALWAYS serves video-only formats (IOS client
-      // never exposes muxed itags) — so audio MUST come from a second
-      // proxied stream, otherwise proxy mode plays in silence.
-      // /stream/proxy directly (not /stream/auto): redirect modes (piped/
-      // invidious) only serve muxed video, never audio-only.
-      const getProxyAudioUrl = () => {
-        const backendBase = getApiBaseUrl();
-        return `${backendBase}/stream/proxy/${ytId || video.id}?quality=audio`;
-      };
-
-      // Pick a safe starting quality based on the browser's network hint.
-      // On flaky connections YouTube starts lower and upgrades — starting
-      // at 720p on a 1-2Mbps hotspot guarantees rebuffer churn. (2026-08)
-      // (getNetworkSuggestedQuality lives at component scope — the stall
-      // auto-downgrade handler needs it too.)
-
-        // Core client-side extraction using base.js signature decryption
-        // Per project rules: Backend fetches raw data, BROWSER decrypts & streams directly from YouTube CDN
-        const doClientSideExtraction = async (startQuality = selectedQuality) => {
-          try {
-            console.log('[VideoPlayer] Starting 100% client-side YouTube stream extraction...');
-            const apiBase = getApiBaseUrl();
-
-            // === Generate/refresh the real PO token ONCE (NON-BLOCKING) ===
-            // Tier 0 (ANDROID_VR) needs NO token â€” don't stall the player
-            // waiting for the slow base.js eval. Token resolves in the
-            // background for WEB-family tiers (Tier 1/2 / WEB_EMBEDDED).
-            let activePoToken = poToken;
-            let activeVisitorData = visitorData;
-            const poTokenPromise = (async () => {
-              if (activePoToken && !activePoToken.startsWith('web+')) {
-                console.log('[VideoPlayer] Using existing PO token');
-                return { poToken: activePoToken, visitorData: activeVisitorData };
-              }
-              try {
-                const { getBrowserPoToken } = await import('@/utils/browserPoToken');
-                const tokenData = await getBrowserPoToken(activeVisitorData);
-                if (tokenData && tokenData.poToken) {
-                  console.log('[VideoPlayer] âœ… Real PO token available in browser');
-                  return { poToken: tokenData.poToken, visitorData: tokenData.visitorData || activeVisitorData };
-                }
-                console.warn('[VideoPlayer] PO token generation returned null â€” WEB-family client tiers may fail');
-              } catch (tokenErr: any) {
-                console.warn('[VideoPlayer] Browser PO token generation failed:', tokenErr.message);
-              }
-              return null;
-            })();
-            // Fire it in the background â€” never block Tier 0 on it.
-            const getPoToken = () => poTokenPromise;
-
-// === TIER 0: Direct client fetch (sandbox endpoint; ANDROID_VR fast path) ===
-            // Google ke sandbox host se, user ke apne IP se. Direct googlevideo URL.
-            // Server bandwidth = 0. No decipher needed, NO PO token needed.
-            try {
-              console.log('[VideoPlayer] Tier 0: Direct client fetch (user IP → Google CDN)...');
-              let direct = await Promise.race([
-                getClientDirectStream(ytId, startQuality, {}),
-                new Promise((r) => setTimeout(() => r(null), getStreamDeadline()))
-              ]);
-              // 2026-08-13 IP-mismatch fix: Google randomly signs the URL
-              // for IPv6 (ip=2401:...) even on IPv4 egress. Browser (IPv4)
-              // => googlevideo 403 => CORB => MEDIA_ELEMENT_ERROR. When the
-              // signed IP is IPv6, retry ONCE with skipCache=true so a fresh
-              // InnerTube call gets a chance to produce an IPv4-signed URL.
-              const signedIpOf = (u) => {
-                const m = u && u.match(/[?&]ip=([^&]+)/);
-                return m ? decodeURIComponent(m[1]) : '';
-              };
-              if (direct && direct.bestUrl) {
-                const ip = signedIpOf(direct.bestUrl);
-                const ipv6Signed = ip.includes(':') && !ip.includes('.');
-                if (ipv6Signed) {
-                  console.warn(`[VideoPlayer] CDN URL IPv6-signed (${ip}) - re-extracting for IPv4 (skipCache)...`);
-                  direct = await Promise.race([
-                    getClientDirectStream(ytId, startQuality, { skipCache: true }),
-                    new Promise((r) => setTimeout(() => r(null), 8000))
-                  ]);
-                }
-              }
-              if (direct && direct.bestUrl) {
-                console.log(`[VideoPlayer] ✅ Tier 0 direct client stream resolved (${direct.client || 'ANDROID'}): ${direct.bestUrl.substring(0, 80)}...`);
-                reportStreamSource(ytId, 'client');
-                return {
-                  bestUrl: direct.bestUrl,
-                  bestQuality: direct.bestQuality,
-                  qualityMap: direct.qualityMap || {},
-                  audioOnlyFormats: direct.audioOnlyFormats || []
-                };
-              }
-            } catch (tier0Err: any) {
-              console.warn('[VideoPlayer] Tier 0 direct client fetch failed:', tier0Err.message);
-            }
-
-            // === Tier 1: youtubei.js/web client-side decryption ===
-            try {
-              // Cap the PO-token wait: if it's not ready in 8s, proceed WITHOUT
-              // it â€” Tier 1 will likely fail anyway, and we must reach the
-              // proxy fallback fast instead of stalling ~25s on token gen.
-              const tokenData = await Promise.race([
-                getPoToken(),
-                new Promise((r) => setTimeout(() => r(null), 8000))
-              ]);
-              if (tokenData) {
-                activePoToken = tokenData.poToken;
-                activeVisitorData = tokenData.visitorData || activeVisitorData;
-              }
-              console.log('[VideoPlayer] Tier 1: youtubei.js/web client-side decryption...', { hasPoToken: !!activePoToken, hasVisitorData: !!activeVisitorData });
-              const res = await getAllDecryptedFormats(ytId, activePoToken, activeVisitorData);
-              if (res && res.bestUrl && Object.keys(res.fullQualityMap).length > 0) {
-                console.log(`[VideoPlayer] âœ… Tier 1 client-side decryption complete using youtubei.js! Got ${Object.keys(res.fullQualityMap).length} quality levels`);
-                reportStreamSource(ytId, 'ytjs');
-                return {
-                  bestUrl: res.bestUrl,
-                  bestQuality: res.bestQuality,
-                  qualityMap: res.fullQualityMap,
-                  audioOnlyFormats: res.audioUrl ? [{ url: res.audioUrl }] : []
-                };
-              }
-              console.warn('[VideoPlayer] Tier 1 youtubei.js returned no usable formats, falling to Tier 2');
-            } catch (ytdlErr: any) {
-              console.warn('[VideoPlayer] Tier 1 youtubei.js browser decryption failed, trying Tier 2:', ytdlErr.message);
-            }
-
-            // === Tier 2: Manual base.js signature/n-code decipher engine ===
-            console.log('[VideoPlayer] Falling back to manual base.js parser...');
-            // === Step 1: Get base.js URL and STS ===
-            // Use cached values or hardcoded fallback - browser can fetch base.js directly!
-            let jsUrl = (typeof window !== 'undefined' && localStorage.getItem('yt_cached_js_url')) || 'https://www.youtube.com/s/player/0053e6c9/player_es6.vflset/en_US/base.js';
-            let sts = parseInt((typeof window !== 'undefined' && localStorage.getItem('yt_cached_sts')) || '19999', 10);
-
-            // Try to get fresh jsUrl from the YouTube embed page (less bot-detected than watch page)
-            // The embed page works without cookies and returns the full player config.
-            // CORS-blocked from the browser, so it goes through the backend's /stream/embed proxy.
-            try {
-              const apiBase = getApiBaseUrl();
-              const embedRes = await fetch(`${apiBase}/stream/embed/${ytId}`, {
-                headers: {
-                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                  'Accept-Language': 'en-US,en;q=0.9',
-                }
-              });
-              if (embedRes.ok) {
-                const embedHtml = await embedRes.text();
-                const jsMatch = embedHtml.match(/"jsUrl":"([^"]+)"/) || embedHtml.match(/"PLAYER_JS_URL":"([^"]+)"/);
-                if (jsMatch) {
-                  // Keep server-relative (/s/player/...) so the CORS-safe backend
-                  // /s/player proxy serves it (base.js + inject.js appended).
-                  const rawJs = jsMatch[1];
-                  const relJs = rawJs.replace(/^https:\/\/www\.youtube\.com/, '');
-                  jsUrl = relJs.startsWith('/') ? relJs : rawJs;
-                  if (typeof window !== 'undefined') localStorage.setItem('yt_cached_js_url', jsUrl);
-                }
-                const stsMatch = embedHtml.match(/"sts":(\d+)/);
-                if (stsMatch) {
-                  sts = parseInt(stsMatch[1], 10);
-                  if (typeof window !== 'undefined') localStorage.setItem('yt_cached_sts', sts.toString());
-                }
-                console.log('[VideoPlayer] Got jsUrl from embed page:', jsUrl);
-              }
-            } catch (_embedErr) {
-              console.warn('[VideoPlayer] Embed page fetch failed, using cached jsUrl:', jsUrl);
-            }
-
-            // Cached jsUrl from browserPoToken may be server-relative (/s/player/...) â€”
-            // resolve against the backend origin which serves base.js + inject.js.
-            if (jsUrl.startsWith('/')) {
-              const serverOrigin = (apiBase.replace(/\/api$/, '') || 'http://localhost:5000');
-              jsUrl = serverOrigin + jsUrl;
-              console.log('[VideoPlayer] Resolved server-relative jsUrl via backend proxy:', jsUrl);
-            }
-
-            // === Step 2: Call InnerTube API directly from browser ===
-            // The browser has YouTube cookies, so InnerTube responds with streaming data!
-            // WEB_EMBEDDED_PLAYER doesn't need PO token
-            let playerConfig: any = null;
-
-            const callInnerTube = async (clientName: string, clientVersion: string, extraBody: any = {}) => {
-              const body: any = {
-                context: {
-                  client: {
-                    hl: 'en',
-                    gl: 'IN',
-                    clientName,
-                    clientVersion,
-                    ...extraBody.clientExtra
-                  }
-                },
-                videoId: ytId,
-                playbackContext: {
-                  contentPlaybackContext: {
-                    signatureTimestamp: sts || 19999,
-                    html5Preference: 'HTML5_PREF_WANTS'
-                  }
-                },
-                racyCheckOk: true,
-                contentCheckOk: true,
-                ...extraBody.bodyExtra
-              };
-              if (activeVisitorData) body.context.client.visitorData = activeVisitorData;
-              if (activePoToken && extraBody.usePoToken) {
-                body.serviceIntegrityDimensions = { poToken: activePoToken };
-              }
-
-              const res = await fetch('https://release-youtubei.sandbox.googleapis.com/youtubei/v1/player?prettyPrint=false', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Youtube-Client-Name': clientName === 'WEB' ? '1' : clientName === 'WEB_EMBEDDED_PLAYER' ? '56' : '1',
-                  'X-Youtube-Client-Version': clientVersion,
-                  'Origin': 'https://www.youtube.com',
-                  'Referer': `https://www.youtube.com/watch?v=${ytId}`,
-                },
-                body: JSON.stringify(body)
-              });
-              if (!res.ok) return null;
-              const data = await res.json();
-              if (data?.playabilityStatus?.status === 'OK' && data?.streamingData) {
-                console.log(`[VideoPlayer] InnerTube ${clientName} âœ… - got streaming data`);
-                return data;
-              }
-              console.warn(`[VideoPlayer] InnerTube ${clientName} - status: ${data?.playabilityStatus?.status}`);
-              return null;
-            };
-
-            // Try WEB_EMBEDDED_PLAYER first (no PO token needed)
-            try {
-              playerConfig = await callInnerTube('WEB_EMBEDDED_PLAYER', '2.20240101.01.00', { clientExtra: { clientScreen: 'EMBED' } });
-            } catch (e: any) {
-              console.warn('[VideoPlayer] WEB_EMBEDDED_PLAYER failed:', e.message);
-            }
-
-            // Try WEB client with PO token if we have one
-            if (!playerConfig && activePoToken) {
-              try {
-                playerConfig = await callInnerTube('WEB', '2.20260629.10.00', {
-                  clientExtra: { originalUrl: `https://www.youtube.com/watch?v=${ytId}` },
-                  usePoToken: true
-                });
-              } catch (e: any) {
-                console.warn('[VideoPlayer] WEB+PO token failed:', e.message);
-              }
-            }
-
-            // Try via CORS proxy as fallback (server fetches on behalf of browser)
-            if (!playerConfig) {
-              try {
-                const embRes = await fetch(
-                  `${apiBase}/videos/proxy/cors?url=${encodeURIComponent('https://www.youtube.com/youtubei/v1/player?prettyPrint=false')}`,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      context: {
-                        client: {
-                          hl: 'en',
-                          gl: 'IN',
-                          clientName: activePoToken ? 'WEB' : 'WEB_EMBEDDED_PLAYER',
-                          clientVersion: activePoToken ? '2.20260629.10.00' : '2.20240101.01.00',
-                          ...(activePoToken ? { originalUrl: `https://www.youtube.com/watch?v=${ytId}` } : { clientScreen: 'EMBED' }),
-                          ...(activeVisitorData ? { visitorData: activeVisitorData } : {})
-                        }
-                      },
-                      videoId: ytId,
-                      playbackContext: { contentPlaybackContext: { signatureTimestamp: sts || 19999, html5Preference: 'HTML5_PREF_WANTS' } },
-                      ...(activePoToken ? { serviceIntegrityDimensions: { poToken: activePoToken } } : {}),
-                      racyCheckOk: true,
-                      contentCheckOk: true
-                    })
-                  }
-                );
-                if (embRes.ok) {
-                  const data = await embRes.json();
-                  if (data?.playabilityStatus?.status === 'OK' && data?.streamingData) {
-                    playerConfig = data;
-                    console.log('[VideoPlayer] Got player config via CORS proxy');
-                  }
-                }
-              } catch (e: any) {
-                console.warn('[VideoPlayer] Proxy InnerTube failed:', e.message);
-              }
-            }
-
-            if (!playerConfig?.streamingData) throw new Error('No streaming data found from any InnerTube client');
-
-            // === Step 3: Fetch base.js directly from browser (no CORS issues!) ===
-            console.log('[VideoPlayer] Fetching base.js for client-side decryption...');
-            let jsContent = '';
-            try {
-              // Try direct browser fetch first - YouTube's base.js is a public static file
-              const directJsRes = await fetch(jsUrl);
-              if (directJsRes.ok) {
-                jsContent = await directJsRes.text();
-                console.log('[VideoPlayer] base.js fetched directly from browser (' + jsContent.length + ' bytes)');
-              }
-            } catch (_directErr) {
-              console.warn('[VideoPlayer] Direct base.js fetch failed, trying proxy...');
-            }
-            if (!jsContent) {
-              const jsRes = await fetch(`${apiBase}/videos/proxy/cors?url=${encodeURIComponent(jsUrl)}&_t=${Date.now()}`);
-              if (!jsRes.ok) throw new Error('Failed to download base.js');
-              jsContent = await jsRes.text();
-              console.log('[VideoPlayer] base.js fetched via proxy (' + jsContent.length + ' bytes)');
-            }
-
-            // === Step 4: Decrypt signatures in browser and get URLs ===
-            console.log('[VideoPlayer] Decrypting format URLs in browser...');
-            const { processFormatUrl } = await import('../../utils/decipher');
-
-            const streamingData = playerConfig.streamingData;
-            let bestUrl = null, bestQuality = null, audioUrl = '';
-            const fullQualityMap: Record<string, {url: string, type: string}> = {};
-
-            const rawFormats = [
-              ...(streamingData.formats || []).map((f: any) => ({...f, _type: 'combined'})),
-              ...(streamingData.adaptiveFormats || []).map((f: any) => {
-                const isVid = f.mimeType?.startsWith('video/');
-                const isAud = f.mimeType?.startsWith('audio/');
-                return {...f, _type: isVid ? 'video_only' : (isAud ? 'audio_only' : 'other')};
-              })
-            ];
-
-            // Filter to prefer H264 (avc1) for video and AAC (mp4a) for audio, falling back if none
-            const hasH264 = rawFormats.some((f: any) => f._type === 'video_only' && f.mimeType?.includes('avc1'));
-            const allFormats = rawFormats.filter((f: any) => {
-              if (f._type === 'video_only') {
-                return !hasH264 || f.mimeType?.includes('avc1');
-              }
-              if (f._type === 'audio_only') {
-                return f.mimeType?.includes('mp4a');
-              }
-              return true;
-            });
-
-            for (const f of allFormats) {
-              if (f._type === 'other') continue;
-              const h = f.height || 0;
-              const label = h ? `${h}p` : 'auto';
-              const url = await processFormatUrl(f, jsContent);
-              if (!url) continue;
-
-              if (f._type === 'combined') {
-                if (!bestUrl) { bestUrl = url; bestQuality = label; }
-                fullQualityMap[label] = { url, type: 'combined' };
-              } else if (f._type === 'video_only') {
-                if (!fullQualityMap[label] || fullQualityMap[label].type !== 'combined') {
-                  fullQualityMap[label] = { url, type: 'video_only' };
-                }
-              } else if (f._type === 'audio_only' && !audioUrl) {
-                audioUrl = url;
-              }
-            }
-
-            if (!bestUrl && Object.keys(fullQualityMap).length === 0) {
-              throw new Error('Browser decryption produced no valid URLs');
-            }
-            if (!bestUrl) bestUrl = Object.values(fullQualityMap)[0]?.url;
-
-            console.log(`[VideoPlayer] âœ… Client-side decryption complete! Got ${Object.keys(fullQualityMap).length} quality levels`);
-            reportStreamSource(ytId, 'decipher');
-            return {
-              bestUrl,
-              bestQuality,
-              qualityMap: fullQualityMap,
-              audioOnlyFormats: audioUrl ? [{ url: audioUrl }] : []
-            };
-
-          } catch (e: any) {
-            console.warn('[VideoPlayer] Client-side decryption failed:', e.message);
-            return null;
-          }
-        };
-
+      try {
+        const [{ getMintedPoToken }, { getEmbedBootstrap }] = await Promise.all([
+          import('@/utils/poTokenMint'),
+          import('@/utils/youtubeDirect')
+        ]);
 
         try {
-          // ⚠️ 2026-08: NO slow-connection fast path anymore. The proxy
-          // served IOS URLs whose byte-range access is capped at ~2MiB by
-          // googlevideo (deep ranges → 403) — playback died after ~25s.
-          // The browser's own extraction (Tier 0, ANDROID_VR + cookies)
-          // returns MUXED URLs with FULL range access (verified: seek to
-          // 300s works), so it's the primary path on EVERY connection.
-          // On slow connections we just seed a lower starting quality so
-          // the first seconds don't churn at 1080p on a 1Mbps link.
-
-          // Effective starting quality: explicit selection wins, otherwise
-          // the network hint (2g→240p, 3g→360p, else 720p).
-          const effectiveStartQuality = selectedQuality === 'auto'
-            ? getNetworkSuggestedQuality()
-            : selectedQuality;
-
-          let config = playerConfigCacheRef.current;
-          if (!config) {
-            console.log(`[VideoPlayer] Initiating 100% Client-Side Extraction for: ${ytId}`);
-            
-            // Do true client-side extraction with Innertube!
-            // Hard 4s deadline: client-side extraction is nice-to-have
-            // (0 server bandwidth) but the backend proxy now resolves in
-            // ~1s. Don't make the user wait 8-15s for it. (2026-08)
-            // 2026-08-14 v3: race the extraction against the deadline, but
-            // DON'T discard the winner if it arrives late — keep the promise
-            // and upgrade to the direct CDN URL when it lands (the proxy
-            // plays in the meantime, so there's never a blank screen).
-            const extractionPromise = doClientSideExtraction(effectiveStartQuality);
-            config = await Promise.race([
-              extractionPromise,
-              new Promise((r) => setTimeout(() => r(null), getStreamDeadline()))
-            ]);
-            
-            if (!config) {
-              // Late-finish upgrade: when the extraction completes after the
-              // deadline, swap the proxy src for the direct CDN URL. The
-              // video element is already playing via proxy, so this only
-              // fires if it's still loading or freshly started.
-              extractionPromise.then((lateConfig) => {
-                if (!lateConfig || !lateConfig.bestUrl || !active || errorRetryCountRef.current > 0) return;
-                console.log('[VideoPlayer] ✅ Late client extraction finished — upgrading from proxy to direct CDN URL.');
-                const suggested = getNetworkSuggestedQuality();
-                const entry = lateConfig.qualityMap && lateConfig.qualityMap[suggested];
-                const lateUrl = (entry && entry.url) ? entry.url : lateConfig.bestUrl;
-                const lateAudio = (lateConfig.audioOnlyFormats && lateConfig.audioOnlyFormats.length > 0
-                  ? lateConfig.audioOnlyFormats[0].url : '');
-                playerConfigCacheRef.current = lateConfig;
-                if (lateConfig.qualityMap) setDirectQualities(lateConfig.qualityMap);
-                reportStreamSource(ytId, 'client');
-                setResolvedUrl(lateUrl);
-                setResolvedAudioUrl(lateAudio);
-              }).catch(() => {});
-              throw new Error('Client-side extraction failed.');
-            }
-            
-            playerConfigCacheRef.current = config;
-            if (active) {
-              setDirectQualities(config.qualityMap);
-            }
-          }
-
-        if (active && config) {
-          let url = null;
-          let audioUrl = '';
-          
-          if (selectedQuality === 'auto') {
-            // 2026-08-13 FIX: prefer the network-suggested quality ENTRY
-            // (muxed itag 18 @360p on 3g = ONE stream, no audio element).
-            // Old code always took bestUrl = 1080p video-only (itag 137)
-            // which needs a second audio stream + heavier buffering.
-            const suggested = getNetworkSuggestedQuality();
-            const entry = config.qualityMap && config.qualityMap[suggested];
-            url = (entry && entry.url) ? entry.url : config.bestUrl;
-            if (entry && entry.type === 'video_only') {
-              audioUrl = config.audioOnlyFormats && config.audioOnlyFormats.length > 0
-                ? config.audioOnlyFormats[0].url
-                : '';
-            }
-          } else {
-            const entry = config.qualityMap[selectedQuality];
-            if (entry) {
-              url = entry.url;
-              if (entry.type === 'video_only') {
-                audioUrl = config.audioOnlyFormats && config.audioOnlyFormats.length > 0
-                  ? config.audioOnlyFormats[0].url
-                  : '';
-              }
-            } else {
-              url = config.bestUrl;
-            }
-          }
-
-          if (url) {
-            console.log(`[VideoPlayer] Direct CDN stream resolved successfully: ${url.substring(0, 80)}...`);
-            setResolvedUrl(url);
-            setResolvedAudioUrl(audioUrl);
-          } else {
-            throw new Error('No valid URL found in direct config');
-          }
+          const minted = await withTimeout(getMintedPoToken(ytId), 20000, 'poToken');
+          if (minted) activePoToken = minted;
+        } catch (tokenErr: any) {
+          console.warn('[VideoPlayer] poToken unavailable:', tokenErr.message);
         }
-      } catch (err) {
-        console.warn('[VideoPlayer] Direct stream resolution failed, falling back to server proxy:', err.message);
+
+        try {
+          const boot = await getEmbedBootstrap(ytId);
+          if (boot?.visitorData) activeVisitorData = boot.visitorData;
+        } catch {
+          // visitorData is optional
+        }
+      } catch (prepErr: any) {
+        console.warn('[VideoPlayer] direct prep failed:', prepErr.message);
+      }
+
+      const commitConfig = (config: any, source: string) => {
+        if (!active || !config?.bestUrl) return false;
+
+        playerConfigCacheRef.current = config;
+        setDirectQualities(config.qualityMap || {});
+
+        const targetKey = selectedQuality === 'auto'
+          ? getNetworkSuggestedQuality()
+          : selectedQuality;
+        const entry = config.qualityMap?.[targetKey];
+        const fallbackEntry = Object.values(config.qualityMap || {}).find(
+          (e: any) => e && e.url === config.bestUrl
+        );
+        const chosen: any = entry || fallbackEntry;
+
+        const url = chosen?.url || config.bestUrl;
+        const bestIsCombined = Object.values(config.qualityMap || {}).some(
+          (e: any) => e && e.url === config.bestUrl && e.type === 'combined'
+        );
+        const audioUrl = (chosen?.type === 'video_only' || (!chosen && !bestIsCombined))
+          ? (config.audioOnlyFormats?.[0]?.url || '')
+          : '';
+
+        console.log(`[VideoPlayer] ${source} stream resolved (${config.bestQuality || 'auto'}):`, String(url).substring(0, 90));
+        reportStreamSource(ytId, source);
+        setResolvedUrl(url);
+        setResolvedAudioUrl(audioUrl);
+        return true;
+      };
+
+      try {
+        // ── Cached config (only from this session, same video) ──
+        const cached = playerConfigCacheRef.current;
+        if (cached?.bestUrl && !skipCache) {
+          commitConfig(cached, 'client-cache');
+          return;
+        }
+
+        // ── TIER 0: player JSON direct from the device ──
+        try {
+          console.log('[VideoPlayer] Tier 0: direct player API from device IP...');
+          const direct = await getClientDirectStream(ytId, effectiveQuality, {
+            poToken: activePoToken,
+            visitorData: activeVisitorData,
+            skipCache,
+            deadlineMs: 30000
+          });
+          if (direct?.bestUrl) {
+            if (direct.poToken) activePoToken = direct.poToken;
+            if (direct.visitorData) activeVisitorData = direct.visitorData;
+            if (commitConfig(direct, direct.source === 'client-cache' ? 'client-cache' : 'client')) {
+              return;
+            }
+          }
+        } catch (tier0Err: any) {
+          console.warn('[VideoPlayer] Tier 0 failed:', tier0Err.message);
+        }
+
+        // ── TIER 1: youtubei.js, dynamic import, direct www.youtube.com ──
+        try {
+          console.log('[VideoPlayer] Tier 1: youtubei.js direct...');
+          const res = await withTimeout(
+            getAllDecryptedFormats(ytId, activePoToken, activeVisitorData),
+            25000,
+            'youtubei.js'
+          );
+          if (res?.bestUrl) {
+            const config = {
+              bestUrl: res.bestUrl,
+              bestQuality: res.bestQuality,
+              qualityMap: res.fullQualityMap || {},
+              audioOnlyFormats: res.audioUrl ? [{ url: res.audioUrl }] : []
+            };
+            if (commitConfig(config, 'ytjs')) return;
+          }
+        } catch (tier1Err: any) {
+          console.warn('[VideoPlayer] Tier 1 failed:', tier1Err.message);
+        }
+
+        // ── TIER 2: embed page + base.js, both fetched direct ──
+        try {
+          console.log('[VideoPlayer] Tier 2: manual base.js decipher (direct fetch)...');
+          const { getEmbedBootstrap, getBaseJs, youtubePlayerRequest } = await import('@/utils/youtubeDirect');
+          const boot = await getEmbedBootstrap(ytId);
+          if (!boot?.jsUrl) throw new Error('No base.js URL from embed page');
+
+          const jsContent = await getBaseJs(boot.jsUrl);
+          const sts = boot.sts || 19999;
+
+          const makeBody = (clientName: string, clientVersion: string, extra: any = {}) => {
+            const body: any = {
+              context: {
+                client: {
+                  hl: 'en',
+                  gl: 'IN',
+                  clientName,
+                  clientVersion,
+                  ...extra
+                }
+              },
+              videoId: ytId,
+              playbackContext: {
+                contentPlaybackContext: {
+                  signatureTimestamp: sts,
+                  html5Preference: 'HTML5_PREF_WANTS'
+                }
+              },
+              racyCheckOk: true,
+              contentCheckOk: true
+            };
+            if (activeVisitorData) body.context.client.visitorData = activeVisitorData;
+            if (activePoToken) body.serviceIntegrityDimensions = { poToken: activePoToken };
+            return body;
+          };
+
+          let playerConfig: any = null;
+          for (const attempt of [
+            { name: 'WEB_EMBEDDED_PLAYER', version: '2.20240101.01.00', extra: { clientScreen: 'EMBED' } },
+            { name: 'WEB', version: '2.20260629.10.00', extra: { originalUrl: `https://www.youtube.com/watch?v=${ytId}` } }
+          ]) {
+            try {
+              const data = await youtubePlayerRequest({
+                body: makeBody(attempt.name, attempt.version, attempt.extra),
+                clientName: attempt.name,
+                clientVersion: attempt.version,
+                videoId: ytId
+              });
+              if (data?.playabilityStatus?.status === 'OK' && data.streamingData) {
+                playerConfig = data;
+                break;
+              }
+              console.warn(`[VideoPlayer] Tier 2 ${attempt.name} status: ${data?.playabilityStatus?.status || 'UNKNOWN'}`);
+            } catch (attemptErr: any) {
+              console.warn(`[VideoPlayer] Tier 2 ${attempt.name} failed:`, attemptErr.message);
+            }
+          }
+
+          if (!playerConfig?.streamingData) throw new Error('No streamingData from WEB clients');
+
+          const streamingData = playerConfig.streamingData;
+          const rawFormats = [
+            ...(streamingData.formats || []).map((f: any) => ({ ...f, _type: 'combined' })),
+            ...(streamingData.adaptiveFormats || []).map((f: any) => {
+              const isVideo = String(f.mimeType || '').startsWith('video/');
+              const isAudio = String(f.mimeType || '').startsWith('audio/');
+              return { ...f, _type: isVideo ? 'video_only' : isAudio ? 'audio_only' : 'other' };
+            })
+          ];
+
+          const hasH264 = rawFormats.some((f: any) => f._type === 'video_only' && String(f.mimeType || '').includes('avc1'));
+          const hasAac = rawFormats.some((f: any) => f._type === 'audio_only' && String(f.mimeType || '').includes('mp4a'));
+          const allFormats = rawFormats.filter((f: any) => {
+            if (f._type === 'video_only') return !hasH264 || String(f.mimeType || '').includes('avc1');
+            if (f._type === 'audio_only') return !hasAac || String(f.mimeType || '').includes('mp4a');
+            return true;
+          });
+
+          const fullQualityMap: Record<string, { url: string; type: string }> = {};
+          let bestUrl: string | null = null;
+          let bestQuality: string | null = null;
+          let audioUrl = '';
+
+          for (const f of allFormats) {
+            if (f._type === 'other') continue;
+            const url = await processFormatUrl(f, jsContent);
+            if (!url) continue;
+            const height = f.height || 0;
+            const label = height ? `${height}p` : 'auto';
+
+            if (f._type === 'combined') {
+              if (!bestUrl) {
+                bestUrl = url;
+                bestQuality = label;
+              }
+              if (!fullQualityMap[label]) fullQualityMap[label] = { url, type: 'combined' };
+            } else if (f._type === 'video_only') {
+              if (!fullQualityMap[label] || fullQualityMap[label].type !== 'combined') {
+                fullQualityMap[label] = { url, type: 'video_only' };
+              }
+              if (!bestUrl) {
+                bestUrl = url;
+                bestQuality = label;
+              }
+            } else if (f._type === 'audio_only' && !audioUrl) {
+              audioUrl = url;
+            }
+          }
+
+          if (!bestUrl && Object.keys(fullQualityMap).length) {
+            const first = Object.values(fullQualityMap)[0];
+            bestUrl = first.url;
+          }
+          if (!bestUrl) throw new Error('Manual decipher produced no URLs');
+
+          const config = {
+            bestUrl,
+            bestQuality,
+            qualityMap: fullQualityMap,
+            audioOnlyFormats: audioUrl ? [{ url: audioUrl }] : []
+          };
+          if (commitConfig(config, 'decipher')) return;
+        } catch (tier2Err: any) {
+          console.warn('[VideoPlayer] Tier 2 failed:', tier2Err.message);
+        }
+
+        // All direct tiers failed → official YouTube iframe (no proxy).
         if (active) {
-          // Straight to the proxy — /stream/auto resolves in ~1s (CDN URL
-          // extraction is cached 55min). The old code first fetched
-          // /stream/url, whose IPv4-signed URLs the IPv6 browser can never
-          // play — it burned a pointless 6s. (2026-08)
-          const effectiveQ = selectedQuality === 'auto' ? getNetworkSuggestedQuality() : selectedQuality;
-          const fallbackUrl = getProxyFallbackUrl(effectiveQ);
-          reportStreamSource(ytId, 'proxy');
-          setResolvedUrl(fallbackUrl);
-          // ⚠️ 2026-08 FIX: the proxy ALWAYS serves MUXED (video+audio)
-          // formats (chooseBestFormat prefers muxed — urlExtractor.js).
-          // No separate audio element needed; a proxied audio-only stream
-          // (IOS client URL) gets 403 from googlevideo (GVS PO-token
-          // enforcement) and throws error:2 on the video element.
-          setResolvedAudioUrl('');
+          setStreamError('Direct playback unavailable');
+          setHasError(true);
         }
       } finally {
-        if (active) {
-          setLoadingStream(false);
-        }
+        if (active) setLoadingStream(false);
       }
     };
 
@@ -868,7 +598,7 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video, selectedQuality, poToken, visitorData]);
+  }, [video, selectedQuality, poToken, visitorData, retryTick]);
 
   // Handle source changes (either new video or new resolution/quality)
   useEffect(() => {
@@ -917,24 +647,6 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
     if (resolvedUrl) {
       console.log('[VideoPlayer] FINAL VIDEO SRC:', resolvedUrl.substring(0, 80) + '...');
     }
-  }, [resolvedUrl]);
-
-  // Quality pre-warm: when streaming through the proxy, fire-and-forget
-  // extractions for every quality level so the backend URL cache is hot.
-  // Switching quality later = instant (no 3-4s re-extraction wait). (2026-08)
-  useEffect(() => {
-    if (!resolvedUrl || !resolvedUrl.includes('/stream/auto/') || !video) return;
-    const ytId = getYoutubeId(video);
-    if (!ytId) return;
-    const currentQ = new URL(resolvedUrl, window.location.origin).searchParams.get('quality');
-    const apiBase = getApiBaseUrl();
-    ['240p', '360p', '480p', '720p', '1080p'].forEach((q) => {
-      if (q === currentQ || prewarmedQualitiesRef.current.has(q)) return;
-      prewarmedQualitiesRef.current.add(q);
-      // /stream/url only EXTRACTS + caches the CDN URL — it does not
-      // stream bytes, so this costs the backend one API call, no bandwidth.
-      fetch(`${apiBase}/stream/url/${ytId}?quality=${q}`, { signal: AbortSignal.timeout(10000) }).catch(() => {});
-    });
   }, [resolvedUrl]);
 
   // Handle speed changes
@@ -1278,90 +990,29 @@ const VideoPlayer = ({ video, isTheaterMode, onTheaterModeToggle, isLoading }) =
 
 const handleError = () => {
     if (!video) return;
-    const ytId = video.id || video.youtube_id;
-    // Only attempt CDN fallback ONCE to prevent infinite retry loop
-    if (
-      resolvedUrl &&
-      (resolvedUrl.includes('googlevideo.com') || resolvedUrl.includes('youtube.com') || resolvedUrl.includes('youtubei')) &&
-      errorRetryCountRef.current === 0
-    ) {
+    const ytId = getYoutubeId(video);
+    if (!ytId) {
+      setHasError(true);
+      return;
+    }
+
+    // One fresh device-side extraction, then the official iframe.
+    if (errorRetryCountRef.current === 0) {
       errorRetryCountRef.current = 1;
-      // 2026-08-13 IP-mismatch fix: a CDN 403/CORB error is usually the
-      // IPv6-signed URL the IPv4 browser can't fetch. Before burning server
-      // bandwidth on the proxy, re-extract ONCE with skipCache so a fresh
-      // InnerTube call may return an IPv4-signed URL.
-      const ipMatch = resolvedUrl.match(/[?&]ip=([^&]+)/);
-      const ip = ipMatch ? decodeURIComponent(ipMatch[1]) : '';
-      const ipv6Signed = ip.includes(':') && !ip.includes('.');
-      if (ipv6Signed) {
-        console.warn(`[VideoPlayer] CDN URL IPv6-signed (${ip}) - re-extracting for IPv4 before proxy fallback...`);
-        doClientSideExtraction().then(async (retryCfg) => {
-          if (retryCfg && retryCfg.bestUrl) {
-            const ipm2 = retryCfg.bestUrl.match(/[?&]ip=([^&]+)/);
-            const ip2 = ipm2 ? decodeURIComponent(ipm2[1]) : '';
-            const ipv6Again = ip2.includes(':') && !ip2.includes('.');
-            if (!ipv6Again) {
-              console.warn('[VideoPlayer] Retry extraction got IPv4 URL - switching back to direct CDN.');
-              playerConfigCacheRef.current = retryCfg;
-              if (retryCfg.qualityMap) {
-                setDirectQualities(retryCfg.qualityMap);
-              }
-              reportStreamSource(ytId, 'client');
-              const audio = (retryCfg.audioOnlyFormats && retryCfg.audioOnlyFormats[0] && retryCfg.audioOnlyFormats[0].url) || '';
-              setResolvedUrl(retryCfg.bestUrl);
-              setResolvedAudioUrl(audio);
-              return;
-            }
-            console.warn(`[VideoPlayer] Retry still IPv6-signed (${ip2}) - proxy fallback.`);
-          }
-          console.warn('[VideoPlayer] CDN URL failed — trying backend proxy stream as one-time fallback...');
-          const backendBase = getApiBaseUrl();
-          setResolvedUrl(`${backendBase}/stream/auto/${ytId}?quality=${selectedQuality}`);
-          setResolvedAudioUrl('');
-        });
-        return;
-      }
-      console.warn('[VideoPlayer] CDN URL failed — trying backend proxy stream as one-time fallback...');
-      const backendBase = getApiBaseUrl();
-      // /stream/auto/ = smart orchestrator proxy: backend fetches CDN (its own
-      // signed URL, works for ALL videos incl. LOGIN_REQUIRED/bot-checked ones)
-      // and streams bytes straight through — no CORS/ORB/IP-mismatch issues.
-      // ⚠️ The proxy ALWAYS serves MUXED (video+audio) formats — a separate
-      // audio element via /stream/proxy/?quality=audio would get an IOS-client
-      // audio URL that googlevideo 403s (GVS PO-token enforcement) and would
-      // throw error:2 on the video. So set resolvedAudioUrl to '' here.
-      setHasError(false);
-      setResolvedUrl(`${backendBase}/stream/auto/${ytId}?quality=${selectedQuality}`);
+      console.warn('[VideoPlayer] Direct CDN playback failed - re-extracting once from device...');
+      playerConfigCacheRef.current = null;
+      setResolvedUrl('');
       setResolvedAudioUrl('');
-      return;
-    }
-    const srcIsProxy = resolvedUrl && resolvedUrl.includes('/stream/');
-    if (!srcIsProxy) {
-      console.warn('[VideoPlayer] Direct CDN stream failed — ensuring fallback to backend proxy...');
-      const backendBase = getApiBaseUrl();
       setHasError(false);
-      setResolvedUrl(`${backendBase}/stream/auto/${ytId}?quality=${selectedQuality}`);
-      setResolvedAudioUrl('');
+      setRetryTick((t) => t + 1);
       return;
     }
-    if (srcIsProxy && proxyRetryCountRef.current === 0) {
-      proxyRetryCountRef.current = 1;
-      console.warn('[VideoPlayer] Proxy stream hiccup (error:2) — reloading once from cache-warm chunk...');
-      const videoEl = videoRef.current;
-      if (videoEl) {
-        const t = videoEl.currentTime || 0;
-        videoEl.load();
-        const reload = () => {
-          if (!videoRef.current) return;
-          videoRef.current.currentTime = t;
-          videoRef.current.play().catch((err: any) => console.error('Proxy retry play error:', err.message));
-        };
-        setTimeout(reload, 300);
-      }
-      return;
-    }
+
+    console.warn('[VideoPlayer] Direct playback failed twice - showing official YouTube iframe.');
     setHasError(true);
-  };  const handleProgressClick = (e) => {
+  };
+
+  const handleProgressClick = (e) => {
     e.stopPropagation();
     if (!videoRef.current || duration === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1673,16 +1324,45 @@ const handleError = () => {
             </div>
           )}
 
-          {hasError && (
-            <div className="video-error-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', background: '#000', position: 'absolute', top: 0, left: 0, width: '100%' }}>
+          {hasError && ytId ? (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: '#000' }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0`}
+                title={video?.title || "Video Player"}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+              <a
+                href={`https://www.youtube.com/watch?v=${ytId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  bottom: 12,
+                  zIndex: 61,
+                  background: 'rgba(0,0,0,0.78)',
+                  color: '#fff',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  textDecoration: 'none'
+                }}
+              >
+                Open in YouTube ↗
+              </a>
+            </div>
+          ) : hasError ? (
+            <div className="video-error-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', background: '#000', position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 60 }}>
               <svg viewBox="0 0 24 24" width="48" height="48" style={{ marginBottom: '16px', color: '#aaa' }}>
                 <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
               </svg>
               <p style={{ fontSize: '16px', fontWeight: '500' }}>This video is unavailable.</p>
             </div>
-          )}
+          ) : null}
           
-          {(isLoading || loadingStream) && (
+          {(isLoading || loadingStream) && !hasError && (
             <div className="video-loading-overlay">
               <div className="video-spinner"></div>
               <p style={{ margin: '12px 0 0 0', fontWeight: 500, fontSize: '14px' }}>Securing Stream...</p>

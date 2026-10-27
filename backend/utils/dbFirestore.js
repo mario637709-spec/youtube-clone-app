@@ -58,12 +58,12 @@ const formatDoc = (doc) => {
 
 // 1. Fetch all videos (merges Firebase RTDB + Firestore entire database + corpus)
 const getVideos = async (query = {}) => {
-  const { category } = query;
+  const { category, page = 1, limit = 20 } = query;
 
   let rtdbVideos = [];
   if (typeof rtdb.getFeedVideos === 'function') {
     try {
-      rtdbVideos = (await rtdb.getFeedVideos({ category, page: 1, limit: 500 })) || [];
+      rtdbVideos = (await rtdb.getFeedVideos({ category, page, limit: Math.max(limit * 3, 60) })) || [];
     } catch (e) {
       console.warn('[dbFirestore] RTDB getFeedVideos miss:', e.message);
     }
@@ -130,11 +130,11 @@ const getVideos = async (query = {}) => {
   // keeping the homepage feed responsive (db.json is synced by the ingester).
   // readAllVideos() merges main db.json + db_worker0-4.json (469k corpus).
   const { videos } = readAllVideos();
-  let list = Object.values(videos);
+  let fallbackList = Object.values(videos);
   if (category && category !== 'All') {
-    list = list.filter(v => v.category === category);
+    fallbackList = fallbackList.filter(v => v.category === category);
   }
-  return list;
+  return fallbackList;
 };
 
 // 1.1 Fetch Shorts videos dedicated
