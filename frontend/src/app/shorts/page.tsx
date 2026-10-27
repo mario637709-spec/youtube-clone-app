@@ -189,6 +189,19 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
     return src;
   };
 
+  // Auto-fallback: if stream hasn't started playing after 4s, activate embed player
+  useEffect(() => {
+    if (isActive && !isPlaying && !hasError) {
+      const timer = setTimeout(() => {
+        if (!isPlaying && (!videoRef.current || videoRef.current.currentTime === 0)) {
+          console.warn('[Shorts] Video not playing after 4s - enabling embed fallback');
+          setHasError(true);
+        }
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, isPlaying, hasError]);
+
   useEffect(() => {
     if (hasError) return;
     if (isActive) {
@@ -287,27 +300,44 @@ const ShortVideoItem = ({ video, isActive }: ShortVideoProps) => {
   return (
     <div className="short-slide-card" onClick={handleDoubleTap}>
       {/* Video element or fallback */}
-      {hasError ? (
-        <div className="short-video-fallback">
-          <img
-            src={video.thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=720&auto=format&fit=crop&q=80'}
-            alt={video.title}
-            className="short-bg-fallback-img"
+      {(() => {
+        const ytId = video.youtube_id || video.id || (video.videoUrl && video.videoUrl.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]);
+        if (hasError && ytId) {
+          return (
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&controls=0&loop=1&playlist=${ytId}&modestbranding=1&playsinline=1&rel=0`}
+              className="short-video-element"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              style={{ width: '100%', height: '100%', border: 'none', objectFit: 'cover' }}
+            />
+          );
+        }
+        if (hasError) {
+          return (
+            <div className="short-video-fallback">
+              <img
+                src={video.thumbnail || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=720&auto=format&fit=crop&q=80'}
+                alt={video.title}
+                className="short-bg-fallback-img"
+              />
+              <div className="fallback-error-text">Video Stream Offline</div>
+            </div>
+          );
+        }
+        return (
+          <video
+            ref={videoRef}
+            className="short-video-element"
+            src={getShortVideoSrc()}
+            loop
+            playsInline
+            onTimeUpdate={handleTimeUpdate}
+            onError={() => setHasError(true)}
+            poster={video.thumbnail || undefined}
           />
-          <div className="fallback-error-text">Video Stream Offline</div>
-        </div>
-      ) : (
-        <video
-          ref={videoRef}
-          className="short-video-element"
-          src={getShortVideoSrc()}
-          loop
-          playsInline
-          onTimeUpdate={handleTimeUpdate}
-          onError={() => setHasError(true)}
-          poster={video.thumbnail || undefined}
-        />
-      )}
+        );
+      })()}
 
       {/* Ambient OLED Vignette Scrim */}
       <div className="short-scrim-top" />
