@@ -38,6 +38,148 @@
     "uploads": { ".read": false, ".write": false },
     "presence": { ".read": "auth != null", ".write": false },
     "live": { ".read": "auth != null", ".write": false },
-    "security": { ".read": false, ".write": false }
+    "security": { ".read": false, ".write": false },
+    "paperNames": {
+      ".read": true,
+      "$nameKey": {
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && data.child('uid').val() === auth.uid && !newData.exists()))",
+        ".validate": "newData.hasChildren(['uid','name','createdAt'])",
+        "uid": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+        "name": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 24" },
+        "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "$other": { ".validate": false }
+      }
+    },
+    "paperDevices": {
+      "$deviceKey": {
+        ".read": "auth != null",
+        ".write": "auth != null && newData.exists() && newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['uid','createdAt'])",
+        "uid": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+        "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "lastSeen": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "$other": { ".validate": false }
+      }
+    },
+    "paperUsers": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "name": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 24" },
+        "nameKey": { ".validate": "newData.isString() && newData.val().length === 64" },
+        "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "pinSalt": { ".validate": "newData.isString() && newData.val().length <= 64" },
+        "wrapSalt": { ".validate": "newData.isString() && newData.val().length <= 64" },
+        "version": { ".validate": "newData.isNumber()" },
+        "library": {
+          "$docId": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['docId','fileName','kind','mimeType','size','ownerUid','ownerName','createdAt','chunkCount','salt','iv','iterations','addedAt','own','codeWrapped','codeIv'])",
+            "docId": { ".validate": "newData.isString()" },
+            "fileName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 180" },
+            "kind": { ".validate": "newData.val() === 'pdf' || newData.val() === 'image' || newData.val() === 'text'" },
+            "mimeType": { ".validate": "newData.isString() && newData.val().length <= 140" },
+            "size": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 20971520" },
+            "ownerUid": { ".validate": "newData.isString()" },
+            "ownerName": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "createdAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "chunkCount": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 96" },
+            "salt": { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "iv": { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "iterations": { ".validate": "newData.isNumber() && newData.val() >= 100000 && newData.val() <= 1000000" },
+            "addedAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "own": { ".validate": "newData.isBoolean()" },
+            "codeWrapped": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 512" },
+            "codeIv": { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "paperAiChats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "messages": {
+          "$messageId": {
+            ".validate": "newData.hasChildren(['role','text','at'])",
+            "role": { ".validate": "newData.val() === 'user' || newData.val() === 'assistant'" },
+            "text": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4000" },
+            "at": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    },
+    "paperIpSignups": {
+      "$ipHash": {
+        ".read": "auth != null",
+        "signups": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          }
+        }
+      }
+    },
+    "sharedIndex": {
+      ".read": "auth != null",
+      "$docId": {
+        ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || (data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || newData.child('ownerUid').val() === auth.uid)))",
+        ".validate": "newData.hasChildren(['ownerUid','ownerName','fileName','mimeType','kind','size','chunkCount','salt','iv','iterations','codeLength','status','createdAt'])",
+        "ownerUid": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "ownerName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+        },
+        "fileName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 180"
+        },
+        "mimeType": {
+          ".validate": "newData.isString() && newData.val().length <= 140"
+        },
+        "kind": {
+          ".validate": "newData.val() === 'pdf' || newData.val() === 'image' || newData.val() === 'text'"
+        },
+        "size": {
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 20971520"
+        },
+        "chunkCount": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 96"
+        },
+        "salt": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "iv": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "iterations": {
+          ".validate": "newData.isNumber() && newData.val() >= 100000 && newData.val() <= 1000000"
+        },
+        "codeLength": {
+          ".validate": "newData.isNumber() && newData.val() === 2"
+        },
+        "status": {
+          ".validate": "newData.val() === 'uploading' || newData.val() === 'ready'"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "sharedFiles": {
+      "$docId": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('sharedIndex').child($docId).child('ownerUid').val() === auth.uid",
+        "$chunkId": {
+          ".validate": "newData.isString() && newData.val().length <= 900000"
+        }
+      }
+    }
   }
 }

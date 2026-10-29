@@ -1,892 +1,752 @@
-﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   VideoPlayer â€” Light Blue "Apple TV Classic" redesign
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+﻿/* ═══════════════════════════════════════════════════════════════
+   AURA VIDEO PLAYER — Apple TV Premium Style
+   Glassmorphism · Smooth Animations · YouTube-like Controls
+   ═══════════════════════════════════════════════════════════════ */
 
-.video-player-outer-wrapper {
+.aura-video-player {
   position: relative;
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: var(--yt-radius-lg);
-}
-
-.video-player-outer-wrapper.theater {
-  border-radius: 0;
-}
-
-.video-player-container {
-  width: 100%;
-  background-color: #000000;
-  border-radius: var(--yt-radius-lg);
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--aura-radius-lg);
   overflow: hidden;
-  position: relative;
-  transition: border-radius 0.3s var(--yt-apple-easing),
-    box-shadow 0.3s var(--yt-apple-easing),
-    transform 0.3s var(--yt-apple-easing);
-  box-shadow: 0 12px 40px rgba(4, 40, 80, 0.35), 0 2px 8px rgba(4, 40, 80, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  z-index: 10;
+  color: var(--aura-text-inverse);
+  font-family: var(--aura-font-body);
+  -webkit-font-smoothing: antialiased;
+  touch-action: none;
 }
 
-.video-player-container:hover {
-  box-shadow: 0 16px 48px rgba(4, 40, 80, 0.45), 0 4px 12px rgba(4, 40, 80, 0.25);
-}
-
-.video-player-container.theater {
+.aura-video-player.theater {
   border-radius: 0;
-  box-shadow: none;
-  border: none;
 }
 
-.video-player-wrapper {
+html[data-device='phone'] .aura-video-player {
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+}
+
+/* ── Video Container ── */
+.aura-video-container {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%;
-  cursor: pointer;
+  height: 100%;
+  background: #000;
 }
 
-.video-player-element {
+.aura-video-element {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background-color: #000000;
+  transition: opacity var(--aura-duration-base) var(--aura-ease-smooth);
+  background: #000;
 }
 
-/* â”€â”€â”€ Play overlay (large center button) â”€â”€â”€ */
-.play-button-overlay {
+/* ── Ambient Mode ── */
+.aura-ambient-bg {
+  position: absolute;
+  inset: -40px;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: var(--aura-radius-xl);
+}
+
+.aura-ambient-canvas {
+  width: 100%;
+  height: 100%;
+  filter: blur(80px) saturate(1.5);
+  opacity: 0.6;
+}
+
+.aura-video-player.ambient .aura-video-container {
+  z-index: 1;
+}
+
+/* ── Loading Overlay ── */
+.aura-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--aura-space-4);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
+  animation: aura-fade-in var(--aura-duration-base) var(--aura-ease-smooth);
+}
+
+.aura-loading-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+/* ── Error Overlay ── */
+.aura-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--aura-space-4);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: var(--aura-space-8);
+  text-align: center;
+  z-index: 10;
+  animation: aura-pop-in var(--aura-duration-base) var(--aura-ease-spring);
+}
+
+.aura-error-icon {
+  font-size: 48px;
+  color: var(--aura-pink-400);
+}
+
+.aura-error-title {
+  font-family: var(--aura-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.aura-error-message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 320px;
+}
+
+/* ── Big Play Button ── */
+.aura-big-play {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.92), rgba(255, 255, 255, 0.92));
+  z-index: 5;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  padding: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--aura-shadow-xl);
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  border: none;
+  animation: aura-pop-in var(--aura-duration-base) var(--aura-ease-spring);
+  transition: transform var(--aura-duration-fast) var(--aura-ease-spring),
+              box-shadow var(--aura-duration-base) var(--aura-ease-smooth),
+              background var(--aura-duration-base) var(--aura-ease-smooth);
+}
+
+.aura-big-play:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: var(--aura-shadow-2xl);
+  background: #FFFFFF;
+}
+
+.aura-big-play:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.aura-big-play .material-symbols-outlined {
+  font-size: 36px;
+  color: var(--aura-text-primary);
+  margin-left: 3px;
+}
+
+/* ── Play/Pause Indicator ── */
+.aura-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: aura-pop-in 0.25s var(--aura-ease-spring);
   pointer-events: none;
-  box-shadow: 0 8px 32px rgba(255, 0, 51, 0.5), 0 0 0 8px rgba(255, 0, 51, 0.15);
-  animation: pulse-play 1.8s var(--yt-apple-easing) infinite alternate;
 }
 
-@keyframes pulse-play {
-  0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 8px 32px rgba(255, 0, 51, 0.5), 0 0 0 8px rgba(255, 0, 51, 0.15); }
-  100% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 12px 44px rgba(255, 0, 51, 0.65), 0 0 0 16px rgba(255, 0, 51, 0.05); }
+.aura-indicator .material-symbols-outlined {
+  font-size: 48px;
+  color: #FFFFFF;
 }
 
-/* â”€â”€â”€ Controls overlay â€” frosted glass, blue glow â”€â”€â”€ */
-.player-controls-overlay {
+/* ── Controls ── */
+.aura-controls {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
-  display: flex;
-  flex-direction: column;
-  padding: 0 14px 12px 14px;
-  opacity: 0;
-  transition: opacity 0.25s var(--yt-apple-easing), transform 0.25s var(--yt-apple-easing);
-  transform: translateY(8px);
-  z-index: 100;
-  cursor: default;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.video-player-container:hover .player-controls-overlay,
-.player-controls-overlay.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.player-controls-overlay.hidden {
+  z-index: 20;
+  padding: var(--aura-space-4) var(--aura-space-5);
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.15) 25%,
+    rgba(0, 0, 0, 0.65) 65%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+  transform: translateY(100%);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(8px);
+  transition: transform var(--aura-duration-base) var(--aura-ease-out),
+              opacity var(--aura-duration-base) var(--aura-ease-out);
 }
 
-/* â”€â”€â”€ Timeline â€” premium light-blue scrubbing bar â”€â”€â”€ */
-.progress-timeline-container {
-  width: 100%;
-  height: 18px;
-  display: flex;
-  align-items: flex-end;
-  cursor: pointer;
-  padding-bottom: 4px;
+.aura-video-player.show-controls .aura-controls,
+.aura-video-player.paused .aura-controls {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Progress Bar ── */
+.aura-progress-wrapper {
   position: relative;
+  height: 24px;
+  margin-bottom: var(--aura-space-3);
+  cursor: pointer;
 }
 
-.progress-timeline-background {
+.aura-progress-track {
+  position: relative;
   width: 100%;
   height: 4px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.22));
-  position: relative;
-  border-radius: 99px;
-  transition: height 0.3s var(--yt-apple-easing);
-  overflow: visible;
+  border-radius: var(--aura-radius-full);
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  transition: height var(--aura-duration-fast) var(--aura-ease-smooth);
 }
 
-.progress-timeline-container:hover .progress-timeline-background {
-  height: 7px;
+.aura-video-player.show-controls .aura-progress-track,
+.aura-progress-wrapper:hover .aura-progress-track {
+  height: 6px;
 }
 
-/* Buffered progress â€” soft blue */
-.buffered-timeline-bar {
-  height: 100%;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.5));
+.aura-progress-track:focus-visible {
+  outline: 2px solid var(--aura-purple-400);
+  outline-offset: 2px;
+}
+
+.aura-progress-buffered {
   position: absolute;
   top: 0;
-  left: 0;
-  border-radius: 99px;
-  transition: width 0.2s linear;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: var(--aura-radius-full);
+  pointer-events: none;
 }
 
-/* Played progress â€” blue gradient with glow */
-.played-timeline-bar {
-  height: 100%;
-  background: var(--yt-accent-gradient);
+.aura-progress-played {
   position: absolute;
   top: 0;
-  left: 0;
-  border-radius: 99px;
-  box-shadow: 0 0 12px rgba(255, 0, 51, 0.55);
+  bottom: 0;
+  background: var(--aura-gradient-brand);
+  border-radius: var(--aura-radius-full);
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
   transition: width 0.1s linear;
 }
 
-/* Scrubber handle â€” glowing blue orb */
-.played-timeline-handle {
-  width: 15px;
-  height: 15px;
+.aura-progress-handle {
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #ffffff;
+  background: #FFFFFF;
+  box-shadow: var(--aura-shadow-lg);
+  transform: translateX(50%) scale(0);
+  transform-origin: center;
+  transition: transform var(--aura-duration-fast) var(--aura-ease-spring);
+}
+
+.aura-video-player.show-controls .aura-progress-handle,
+.aura-progress-wrapper:hover .aura-progress-handle {
+  transform: translateX(50%) scale(1);
+}
+
+.aura-hover-preview {
   position: absolute;
-  top: 50%;
-  right: -7.5px;
-  transform: translateY(-50%) scale(0);
-  transition: transform 0.25s var(--yt-bounce-easing), box-shadow 0.25s var(--yt-apple-easing);
-  box-shadow: 0 0 10px rgba(255, 0, 51, 0.9), 0 2px 6px rgba(0, 0, 0, 0.4);
-  border: 2px solid var(--yt-accent);
-}
-
-.progress-timeline-container:hover .played-timeline-handle {
-  transform: translateY(-50%) scale(1);
-}
-
-/* â”€â”€â”€ Controls row â”€â”€â”€ */
-.controls-row {
+  bottom: 100%;
+  left: 0;
+  transform: translateX(-50%) translateY(-8px);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-top: 4px;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 25;
+  animation: aura-fade-up var(--aura-duration-fast) var(--aura-ease-spring);
 }
 
-.controls-left, .controls-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.aura-hover-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 4px 10px;
+  border-radius: var(--aura-radius-sm);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
 }
 
-.player-control-btn {
-  background: none;
-  border: none;
-  color: #eaf4ff;
-  padding: 7px;
-  cursor: pointer;
+.aura-hover-thumb {
+  width: 160px;
+  height: 90px;
+  border-radius: var(--aura-radius-sm);
+  background: var(--aura-gradient-brand-soft);
+  box-shadow: var(--aura-shadow-lg);
+}
+
+.aura-time-display {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  transition: color 0.15s ease, background-color 0.15s ease, transform 0.15s var(--yt-bounce-easing);
-}
-
-.player-control-btn:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.18);
-  transform: scale(1.12);
-}
-
-.player-control-btn:active {
-  transform: scale(0.9);
-}
-
-.player-control-btn.cc-btn.active {
-  color: #ff5c7a;
-  border-bottom: 2px solid #ff5c7a;
-  border-radius: 0;
-}
-
-.time-elapsed-display {
-  color: #d8e8f8;
+  margin-top: var(--aura-space-2);
   font-size: 13px;
-  font-weight: 500;
-  margin-left: 8px;
-  user-select: none;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.3px;
+  font-family: var(--aura-font-mono);
+  color: rgba(255, 255, 255, 0.9);
 }
 
-/* â”€â”€â”€ Volume â”€â”€â”€ */
-.volume-control-wrapper {
-  display: flex;
+.aura-duration {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Main Controls Row ── */
+.aura-controls-main {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
+  gap: var(--aura-space-4);
 }
 
-.volume-slider-container {
-  width: 0;
-  overflow: hidden;
-  transition: width 0.25s var(--yt-apple-easing);
-  display: flex;
+/* ── Control Button ── */
+.aura-control-btn {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--aura-radius-full);
+  color: rgba(255, 255, 255, 0.9);
+  transition: background var(--aura-duration-fast) var(--aura-ease-smooth),
+              color var(--aura-duration-fast) var(--aura-ease-smooth),
+              transform var(--aura-duration-fast) var(--aura-ease-spring);
 }
 
-.volume-control-wrapper:hover .volume-slider-container,
-.volume-slider-container.slider-expanded {
-  width: 64px;
-  margin-left: 4px;
+.aura-control-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  transform: scale(1.1);
 }
 
-.yt-volume-slider {
-  width: 100%;
+.aura-control-btn:active {
+  transform: scale(0.95);
+}
+
+.aura-control-btn .material-symbols-outlined {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+/* Play Button - Apple TV Style */
+.aura-play-btn {
+  width: 56px;
+  height: 56px;
+  background: #FFFFFF;
+  color: #000;
+  box-shadow: var(--aura-shadow-lg);
+  margin: 0 var(--aura-space-2);
+}
+
+.aura-play-btn:hover {
+  background: #FFFFFF;
+  transform: scale(1.08);
+  box-shadow: var(--aura-shadow-xl);
+}
+
+.aura-play-btn .material-symbols-outlined {
+  font-size: 28px;
+  margin-left: 3px;
+}
+
+/* Volume Button with Slider */
+.aura-control-btn.muted {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.aura-volume-slider {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100px;
   height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
   background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--aura-radius-full);
   outline: none;
   cursor: pointer;
-  accent-color: #ff5c7a;
-  -webkit-appearance: none;
-  border-radius: 99px;
-}
-
-.yt-volume-slider::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 99px;
-}
-
-.yt-volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 2px solid #ff5c7a;
-  margin-top: -4px;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
-}
-
-/* â”€â”€â”€ Settings popover â€” glass blue â”€â”€â”€ */
-.yt-player-settings-popover {
-  position: absolute;
-  bottom: 54px;
-  right: 6px;
-  background: rgba(6, 24, 44, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 14px;
-  width: 256px;
-  padding: 8px 0;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  z-index: 110;
-  display: flex;
-  flex-direction: column;
-  animation: settingsScaleUp 0.32s var(--yt-bounce-easing);
-}
-
-@keyframes settingsScaleUp {
-  from { transform: scale(0.92) translateY(8px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-.yt-settings-menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  font-size: 13px;
-  color: #dceeff;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  width: 100%;
-}
-
-.yt-settings-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.14);
-}
-
-.yt-settings-menu-label {
-  font-weight: 500;
-}
-
-.yt-settings-menu-value {
-  color: #8fc4ee;
-  margin-left: auto;
-  margin-right: 8px;
-  font-size: 12px;
-}
-
-.yt-settings-menu-arrow {
-  color: #8fc4ee;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.yt-settings-menu-sub {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 0;
-}
-
-.yt-settings-sub-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-}
-
-.yt-settings-sub-back {
-  font-size: 14px;
-}
-
-.yt-settings-divider {
-  border: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  margin: 4px 0;
-}
-
-.yt-settings-sub-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  font-size: 13px;
-  color: #dceeff;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  width: 100%;
-  text-align: left;
-}
-
-.yt-settings-sub-item:hover {
-  background-color: rgba(255, 255, 255, 0.14);
-}
-
-.yt-settings-sub-item.active {
-  color: #ff5c7a;
-  font-weight: 600;
-}
-
-.yt-settings-sub-item:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.yt-settings-check {
-  color: #ff5c7a;
-  font-size: 13px;
-}
-
-/* ─── Quality loading state ─── */
-.yt-settings-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 16px;
-  color: #8fc4ee;
-  font-size: 12px;
-}
-
-.yt-settings-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  border-radius: 50%;
-  border-top-color: #ff0033;
-  animation: spin 0.8s linear infinite;
-}
-
-/* Disabled quality option */
-.yt-settings-sub-item:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* â”€â”€â”€ Fullscreen â”€â”€â”€ */
-.video-player-container:fullscreen {
-  width: 100vw;
-  height: 100vh;
-  border-radius: 0;
-}
-
-.video-player-container:fullscreen .video-player-wrapper {
-  width: 100vw;
-  height: 100vh;
-  padding-bottom: 0;
-}
-
-.video-player-container:fullscreen .video-player-element {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* â”€â”€â”€ Loading overlay â€” premium blue pulse loader â”€â”€â”€ */
-.video-loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-  color: #fff;
-}
-
-.video-spinner {
-  width: 54px;
-  height: 54px;
-  border: 4px solid rgba(255, 255, 255, 0.18);
-  border-radius: 50%;
-  border-top-color: #ff0033;
-  animation: spin 0.9s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
-  margin-bottom: 14px;
-  box-shadow: 0 0 24px rgba(255, 0, 51, 0.25);
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* â”€â”€â”€ Circular dots loader â€” blue ring chase â”€â”€â”€ */
-.dots-loader-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 20px;
-  color: #ffffff;
-  background: #000;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 45;
-  border-radius: var(--yt-radius-lg);
-}
-
-.circular-dots-loader {
-  position: relative;
-  width: 64px;
-  height: 64px;
-}
-
-.circular-dots-loader .dot {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  background: linear-gradient(135deg, #fff, #f2f2f2);
-  border-radius: 50%;
-  /* FIX: translate must be preserved INSIDE the keyframes â€” without it
-     the dot-chase animation overrides the centering transform and the
-     dots fly off their ring positions (the "loader doesn't spin" bug). */
-  transform: translate(-50%, -50%);
-  animation: dot-chase 1.3s var(--yt-apple-easing) infinite;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-}
-
-.circular-dots-loader .dot:nth-child(1) { top: 15%; left: 50%; animation-delay: 0s; }
-.circular-dots-loader .dot:nth-child(2) { top: 25%; left: 75%; animation-delay: 0.16s; }
-.circular-dots-loader .dot:nth-child(3) { top: 50%; left: 85%; animation-delay: 0.32s; }
-.circular-dots-loader .dot:nth-child(4) { top: 75%; left: 75%; animation-delay: 0.48s; }
-.circular-dots-loader .dot:nth-child(5) { top: 85%; left: 50%; animation-delay: 0.64s; }
-.circular-dots-loader .dot:nth-child(6) { top: 75%; left: 25%; animation-delay: 0.8s; }
-.circular-dots-loader .dot:nth-child(7) { top: 50%; left: 15%; animation-delay: 0.96s; }
-.circular-dots-loader .dot:nth-child(8) { top: 25%; left: 25%; animation-delay: 1.12s; }
-
-@keyframes dot-chase {
-  0%, 100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.7);
-    opacity: 1;
-    background: #fff;
-  }
-}
-
-.loader-percentage {
-  font-size: 14px;
-  font-weight: 700;
-  color: #ff5c7a;
-  font-variant-numeric: tabular-nums;
-}
-
-.loader-status {
-  font-size: 16px;
-  font-weight: 500;
-  color: #ffffff;
-  margin: 0;
-  animation: fade-in-up 0.5s var(--yt-apple-easing) both;
-}
-
-.loader-countdown {
-  font-size: 13px;
-  color: #8fc4ee;
-  margin: 0;
-}
-
-/* â”€â”€â”€ Replay overlay â”€â”€â”€ */
-.replay-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(4, 16, 32, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 60;
-  cursor: pointer;
-  animation: fadeIn 0.3s ease;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.replay-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.85), rgba(255, 255, 255, 0.85));
-  padding: 18px 28px;
-  border-radius: 14px;
-  border: none;
-  box-shadow: 0 10px 30px rgba(255, 0, 51, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15);
-  transition: background-color 0.2s, transform 0.25s var(--yt-bounce-easing), box-shadow 0.25s;
-}
-
-.replay-button:hover {
-  transform: scale(1.06) translateY(-2px);
-  box-shadow: 0 14px 40px rgba(255, 0, 51, 0.6);
-}
-
-.replay-button svg {
-  transition: transform 0.35s var(--yt-apple-easing);
-}
-
-.replay-button:hover svg {
-  transform: rotate(-45deg) scale(1.1);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* â”€â”€â”€ Center play/pause micro indicator â”€â”€â”€ */
-.center-play-pause-indicator {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
-  background: rgba(6, 24, 44, 0.7);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  border-radius: 50%;
-  width: 76px;
-  height: 76px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 80;
   opacity: 0;
-  color: #ffffff;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 0, 51, 0.25);
-}
-
-.center-play-pause-indicator.animate {
-  animation: center-spring-scale 0.7s var(--yt-apple-easing) forwards;
-}
-
-@keyframes center-spring-scale {
-  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-  20% { transform: translate(-50%, -50%) scale(1.25); opacity: 0.95; }
-  40% { transform: translate(-50%, -50%) scale(1); opacity: 0.95; }
-  100% { transform: translate(-50%, -50%) scale(1.45); opacity: 0; }
-}
-
-/* â”€â”€â”€ Ambient glow â”€â”€â”€ */
-.ambient-glow-canvas {
-  position: absolute;
-  top: -8%;
-  left: -8%;
-  width: 116%;
-  height: 116%;
-  filter: blur(80px) brightness(1.1) saturate(1.25);
-  opacity: 0.5;
-  z-index: 1;
   pointer-events: none;
-  transition: opacity 1s var(--yt-apple-easing);
-  border-radius: 24px;
+  transition: opacity var(--aura-duration-fast) var(--aura-ease-smooth),
+              transform var(--aura-duration-fast) var(--aura-ease-smooth);
 }
 
-/* â”€â”€â”€ Timeline hover tooltip â”€â”€â”€ */
-.progress-hover-tooltip {
-  position: absolute;
-  bottom: 26px;
-  transform: translateX(-50%);
-  background: rgba(6, 24, 44, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
-  padding: 5px 11px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(255, 0, 51, 0.2);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  z-index: 102;
-  animation: scale-in 0.2s var(--yt-apple-easing) both;
+.aura-control-btn:hover .aura-volume-slider,
+.aura-control-btn:focus-within .aura-volume-slider {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) translateX(-8px);
 }
 
-/* â”€â”€â”€ Dynamic action feedback â”€â”€â”€ */
-.player-feedback-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 95;
-  pointer-events: none;
-  animation: feedbackScaleFade 0.85s var(--yt-apple-easing) forwards;
-}
-
-@keyframes feedbackScaleFade {
-  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
-  20% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.98; }
-  35% { transform: translate(-50%, -50%) scale(1); opacity: 0.98; }
-  100% { transform: translate(-50%, -50%) scale(1.25); opacity: 0; }
-}
-
-.feedback-content {
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.9), rgba(255, 255, 255, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-radius: 50%;
-  width: 76px;
-  height: 76px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: #ffffff;
-  box-shadow: 0 12px 34px rgba(255, 0, 51, 0.5);
-}
-
-.feedback-icon svg {
-  width: 28px;
-  height: 28px;
-  fill: currentColor;
-}
-
-.feedback-text {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-/* â”€â”€â”€ Settings toggle switch â€” blue â”€â”€â”€ */
-.yt-settings-menu-toggle-switch {
-  width: 34px;
-  height: 20px;
-  border-radius: 99px;
-  background-color: rgba(255, 255, 255, 0.25);
-  position: relative;
-  transition: background-color 0.25s var(--yt-apple-easing);
-  margin-left: 8px;
-}
-
-.yt-settings-menu-toggle-switch::after {
-  content: '';
+.aura-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: #ffffff;
+  background: #FFFFFF;
+  box-shadow: var(--aura-shadow-md);
+  cursor: pointer;
+  transition: transform var(--aura-duration-fast) var(--aura-ease-spring);
+}
+
+.aura-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.aura-volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: var(--aura-shadow-md);
+}
+
+/* Divider */
+.aura-control-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 var(--aura-space-2);
+}
+
+/* ── Settings Menu ── */
+.aura-settings {
+  position: relative;
+}
+
+.aura-settings-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.aura-settings-panel {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.25s var(--yt-bounce-easing);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  bottom: calc(100% + 12px);
+  right: 0;
+  min-width: 220px;
+  background: rgba(20, 22, 30, 0.98);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--aura-radius-xl);
+  box-shadow: var(--aura-shadow-xl), 0 0 0 1px rgba(192, 132, 252, 0.1);
+  overflow: hidden;
+  z-index: 30;
+  animation: aura-scale-in var(--aura-duration-base) var(--aura-ease-spring);
 }
 
-.yt-settings-menu-toggle-switch.active {
-  background: var(--yt-accent-gradient);
-  box-shadow: 0 0 12px rgba(255, 0, 51, 0.4);
+.aura-submenu-header {
+  display: flex;
+  align-items: center;
+  gap: var(--aura-space-3);
+  padding: var(--aura-space-3) var(--aura-space-4);
+  color: var(--aura-text-secondary);
 }
 
-.yt-settings-menu-toggle-switch.active::after {
-  transform: translateX(14px);
-}
-
-/* â”€â”€â”€ Shortcuts overlay â”€â”€â”€ */
-.yt-shortcuts-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(4, 14, 28, 0.85);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  z-index: 120;
+.aura-submenu-back {
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.25s ease;
+  border-radius: var(--aura-radius-full);
+  color: var(--aura-text-secondary);
+  transition: background var(--aura-duration-fast) var(--aura-ease-smooth);
 }
 
-.yt-shortcuts-card {
-  background: rgba(6, 24, 44, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
-  width: 90%;
-  max-width: 430px;
-  padding: 24px;
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 0, 51, 0.12);
-  animation: settingsScaleUp 0.35s var(--yt-bounce-easing);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+.aura-submenu-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
 }
 
-.yt-shortcuts-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
+.aura-submenu-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #FFFFFF;
 }
 
-.yt-shortcuts-header h3 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.3px;
-}
-
-.close-shortcuts-btn {
-  background: none;
+.aura-settings-divider {
+  margin: 0;
   border: none;
-  color: #8fc4ee;
-  font-size: 26px;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
-  transition: color 0.15s ease, transform 0.2s var(--yt-bounce-easing);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.close-shortcuts-btn:hover {
-  color: #ffffff;
-  transform: rotate(90deg) scale(1.15);
-}
-
-.yt-shortcuts-grid {
+.aura-settings-loading {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: var(--aura-space-3);
+  padding: var(--aura-space-6);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
 }
 
-.shortcut-item {
+.aura-submenu-content {
+  padding: var(--aura-space-2);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.aura-submenu-item {
   display: flex;
   align-items: center;
-  font-size: 13px;
-  color: #dceeff;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  padding-bottom: 8px;
-}
-
-.shortcut-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.shortcut-item kbd {
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.3), rgba(255, 255, 255, 0.3));
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 7px;
-  padding: 3px 9px;
-  font-family: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  font-size: 11px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 0 8px rgba(255, 0, 51, 0.2);
-}
-
-.shortcut-item span {
-  color: #8fc4ee;
+  width: 100%;
+  padding: var(--aura-space-3) var(--aura-space-4);
+  border-radius: var(--aura-radius-md);
+  font-size: 14px;
   font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: left;
+  background: transparent;
+  transition: background var(--aura-duration-fast) var(--aura-ease-smooth);
 }
 
-/* â”€â”€â”€ Mobile â”€â”€â”€ */
-@media (max-width: 640px) {
-  .controls-left, .controls-right {
-    gap: 2px;
-  }
+.aura-submenu-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
 
-  .player-control-btn {
-    padding: 4px;
-  }
+.aura-submenu-item:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
-  .player-control-btn svg {
-    width: 20px;
-    height: 20px;
-  }
+.aura-submenu-item.active {
+  background: rgba(96, 165, 250, 0.18);
+  color: var(--aura-blue-300);
+}
 
-  .controls-right {
-    gap: 2px;
-  }
+.aura-submenu-label {
+  flex: 1;
+}
 
-  .volume-slider-container {
-    display: none;
-  }
+.aura-check {
+  font-size: 20px;
+  color: var(--aura-blue-400);
+  animation: aura-check var(--aura-duration-base) var(--aura-ease-spring);
+}
 
-  .volume-control-wrapper {
-    position: static;
+.aura-settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--aura-space-3) var(--aura-space-4);
+  border-radius: var(--aura-radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: left;
+  background: transparent;
+  transition: background var(--aura-duration-fast) var(--aura-ease-smooth);
+}
+
+.aura-settings-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.aura-settings-label {
+  flex: 1;
+}
+
+.aura-settings-value {
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--aura-font-mono);
+}
+
+.aura-settings-chevron {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.aura-toggle {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: var(--aura-radius-full);
+  background: rgba(255, 255, 255, 0.15);
+  transition: background var(--aura-duration-base) var(--aura-ease-smooth);
+}
+
+.aura-toggle.on {
+  background: var(--aura-gradient-brand);
+}
+
+.aura-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: var(--aura-shadow-md);
+  transition: transform var(--aura-duration-base) var(--aura-ease-spring);
+}
+
+.aura-toggle.on .aura-toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* ── YouTube Link ── */
+.aura-youtube-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--aura-radius-full);
+  color: rgba(255, 255, 255, 0.7);
+  transition: background var(--aura-duration-fast) var(--aura-ease-smooth),
+              color var(--aura-duration-fast) var(--aura-ease-smooth);
+}
+
+.aura-youtube-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #FF0033;
+}
+
+/* ── Toast ── */
+.aura-toast {
+  position: absolute;
+  top: var(--aura-space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--aura-space-2);
+  padding: var(--aura-space-2) var(--aura-space-4);
+  background: rgba(20, 22, 30, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--aura-radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  color: #FFFFFF;
+  box-shadow: var(--aura-shadow-lg);
+  animation: aura-slide-down var(--aura-duration-base) var(--aura-ease-spring);
+}
+
+@keyframes aura-slide-down {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Player Loading ── */
+.aura-player-loading {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--aura-gray-100);
+  border-radius: var(--aura-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Focus Visible ── */
+.aura-video-player *:focus-visible {
+  outline: 2px solid var(--aura-purple-400);
+  outline-offset: 2px;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .aura-video-player *,
+  .aura-video-player *::before,
+  .aura-video-player *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Mobile Optimizations ── */
+html[data-device='phone'] .aura-controls {
+  padding: var(--aura-space-3) var(--aura-space-4);
+}
+
+html[data-device='phone'] .aura-control-btn {
+  width: 48px;
+  height: 48px;
+}
+
+html[data-device='phone'] .aura-play-btn {
+  width: 60px;
+  height: 60px;
+}
+
+html[data-device='phone'] .aura-progress-track {
+  height: 6px;
+}
+
+html[data-device='phone'] .aura-video-player.show-controls .aura-progress-track {
+  height: 8px;
+}
+
+html[data-device='phone'] .aura-volume-slider {
+  display: none;
+}
+
+html[data-device='phone'] .aura-big-play {
+  width: 72px;
+  height: 72px;
+}
+
+html[data-device='phone'] .aura-indicator {
+  width: 80px;
+  height: 80px;
+}
+
+/* ── Scrollbar for Submenu ── */
+.aura-submenu-content::-webkit-scrollbar {
+  width: 6px;
+}
+.aura-submenu-content::-webkit-scrollbar-thumb {
+  background: rgba(192, 132, 252, 0.4);
+  border-radius: 3px;
 }

@@ -1,0 +1,507 @@
+/* ═══════════════════════════════════════════════════════════════
+   AURA — Premium YouTube Clone Design System
+   Light Blue · Light Pink · Light Purple
+   Apple TV-inspired · Ultra-smooth · Vivid
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Design Tokens ─── */
+:root {
+  /* ═══ COLOR PALETTE ═══ */
+
+  /* Primary — Light Blue */
+  --aura-blue-50: #F0F7FF;
+  --aura-blue-100: #E0EFFF;
+  --aura-blue-200: #C2DFFF;
+  --aura-blue-300: #94C6FF;
+  --aura-blue-400: #60A5FA;
+  --aura-blue-500: #3B82F6;
+  --aura-blue-600: #2563EB;
+  --aura-blue-700: #1D4ED8;
+
+  /* Secondary — Light Pink */
+  --aura-pink-50: #FFF5F7;
+  --aura-pink-100: #FFE8EE;
+  --aura-pink-200: #FFD1DC;
+  --aura-pink-300: #FFB3C6;
+  --aura-pink-400: #FF8FAB;
+  --aura-pink-500: #F472B6;
+  --aura-pink-600: #EC4899;
+  --aura-pink-700: #DB2777;
+
+  /* Accent — Light Purple */
+  --aura-purple-50: #FAF5FF;
+  --aura-purple-100: #F3E8FF;
+  --aura-purple-200: #E9D5FF;
+  --aura-purple-300: #D8B4FE;
+  --aura-purple-400: #C084FC;
+  --aura-purple-500: #A855F7;
+  --aura-purple-600: #9333EA;
+  --aura-purple-700: #7E22CE;
+
+  /* Neutrals */
+  --aura-white: #FFFFFF;
+  --aura-gray-50: #FAFBFF;
+  --aura-gray-100: #F5F7FF;
+  --aura-gray-200: #EEF1F8;
+  --aura-gray-300: #E2E6F0;
+  --aura-gray-400: #C8CEDD;
+  --aura-gray-500: #9AA2B8;
+  --aura-gray-600: #6B7390;
+  --aura-gray-700: #4A5168;
+  --aura-gray-800: #2D3348;
+  --aura-gray-900: #1A1F30;
+
+  /* Semantic */
+  --aura-bg-app: #F5F7FF;
+  --aura-bg-surface: #FFFFFF;
+  --aura-bg-elevated: #FFFFFF;
+  --aura-bg-glass: rgba(255, 255, 255, 0.72);
+  --aura-bg-glass-strong: rgba(255, 255, 255, 0.88);
+  --aura-bg-soft-blue: #EEF4FF;
+  --aura-bg-soft-pink: #FFF0F5;
+  --aura-bg-soft-purple: #F8F0FF;
+
+  --aura-text-primary: #1A1F30;
+  --aura-text-secondary: #4A5168;
+  --aura-text-tertiary: #9AA2B8;
+  --aura-text-inverse: #FFFFFF;
+
+  --aura-border: rgba(200, 206, 221, 0.35);
+  --aura-border-strong: rgba(200, 206, 221, 0.55);
+
+  /* Gradients */
+  --aura-gradient-brand: linear-gradient(135deg, #60A5FA 0%, #C084FC 45%, #FF8FAB 100%);
+  --aura-gradient-brand-soft: linear-gradient(135deg, #EEF4FF 0%, #F8F0FF 45%, #FFF0F5 100%);
+  --aura-gradient-blue-pink: linear-gradient(135deg, #3B82F6 0%, #F472B6 100%);
+  --aura-gradient-pink-purple: linear-gradient(135deg, #F472B6 0%, #A855F7 100%);
+  --aura-gradient-purple-blue: linear-gradient(135deg, #A855F7 0%, #3B82F6 100%);
+  --aura-gradient-triple: linear-gradient(120deg, #60A5FA 0%, #C084FC 50%, #FFB3C6 100%);
+  --aura-gradient-glass: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.65) 100%);
+
+  /* Shadows */
+  --aura-shadow-xs: 0 1px 2px rgba(26, 31, 48, 0.04);
+  --aura-shadow-sm: 0 2px 8px rgba(26, 31, 48, 0.06);
+  --aura-shadow-md: 0 4px 16px rgba(26, 31, 48, 0.08);
+  --aura-shadow-lg: 0 8px 32px rgba(26, 31, 48, 0.10);
+  --aura-shadow-xl: 0 16px 48px rgba(26, 31, 48, 0.12);
+  --aura-shadow-2xl: 0 24px 64px rgba(26, 31, 48, 0.16);
+  --aura-shadow-blue: 0 8px 32px rgba(59, 130, 246, 0.20);
+  --aura-shadow-pink: 0 8px 32px rgba(244, 114, 182, 0.20);
+  --aura-shadow-purple: 0 8px 32px rgba(168, 85, 247, 0.20);
+  --aura-shadow-glow: 0 0 0 1px rgba(192, 132, 252, 0.15), 0 8px 40px rgba(96, 165, 250, 0.18);
+
+  /* Radii */
+  --aura-radius-xs: 6px;
+  --aura-radius-sm: 10px;
+  --aura-radius-md: 14px;
+  --aura-radius-lg: 20px;
+  --aura-radius-xl: 28px;
+  --aura-radius-2xl: 36px;
+  --aura-radius-full: 9999px;
+
+  /* Motion */
+  --aura-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --aura-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --aura-ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --aura-ease-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --aura-duration-fast: 0.18s;
+  --aura-duration-base: 0.28s;
+  --aura-duration-slow: 0.45s;
+  --aura-duration-slower: 0.65s;
+
+  /* Typography */
+  --aura-font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --aura-font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --aura-font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Spacing */
+  --aura-space-1: 4px;
+  --aura-space-2: 8px;
+  --aura-space-3: 12px;
+  --aura-space-4: 16px;
+  --aura-space-5: 20px;
+  --aura-space-6: 24px;
+  --aura-space-8: 32px;
+  --aura-space-10: 40px;
+  --aura-space-12: 48px;
+  --aura-space-16: 64px;
+
+  /* Layout */
+  --aura-navbar-h: 64px;
+  --aura-sidebar-w: 240px;
+  --aura-sidebar-collapsed-w: 76px;
+  --aura-bottom-nav-h: 68px;
+
+  /* ═══ BACKWARD COMPAT ALIASES ═══
+     Existing components use --yt-* variables. These aliases
+     map them to the new Aura tokens so every screen instantly
+     inherits the new palette without touching each file. */
+  --yt-bg-main: var(--aura-bg-app);
+  --yt-bg-elevated: var(--aura-bg-elevated);
+  --yt-bg-secondary: var(--aura-bg-soft-blue);
+  --yt-bg-hover: rgba(96, 165, 250, 0.10);
+  --yt-text-primary: var(--aura-text-primary);
+  --yt-text-secondary: var(--aura-text-secondary);
+  --yt-border-color: var(--aura-border);
+  --yt-brand-red: var(--aura-pink-500);
+  --yt-accent: var(--aura-purple-500);
+  --yt-accent-soft: var(--aura-pink-400);
+  --yt-accent-deep: var(--aura-purple-600);
+  --yt-subscribe-bg: var(--aura-gradient-brand);
+  --yt-subscribe-color: #FFFFFF;
+  --yt-subscribed-bg: var(--aura-bg-soft-purple);
+  --yt-subscribed-color: var(--aura-purple-600);
+  --yt-bg-card: var(--aura-bg-surface);
+  --yt-bg-pill: rgba(96, 165, 250, 0.10);
+  --yt-bg-pill-hover: rgba(96, 165, 250, 0.18);
+  --yt-skeleton-bg: #E8ECF7;
+  --yt-skeleton-bg-active: #D8DFF0;
+  --yt-accent-gradient: var(--aura-gradient-brand);
+  --yt-apple-easing: var(--aura-ease-apple);
+  --yt-bounce-easing: var(--aura-ease-spring);
+  --yt-glass-bg: var(--aura-bg-glass);
+  --yt-glass-border: var(--aura-border);
+  --yt-shadow-glow: var(--aura-shadow-blue);
+  --yt-shadow-card: var(--aura-shadow-sm);
+  --yt-shadow-hover: var(--aura-shadow-md);
+  --yt-radius-sm: var(--aura-radius-sm);
+  --yt-radius-md: var(--aura-radius-md);
+  --yt-radius-lg: var(--aura-radius-lg);
+  --yt-radius-xl: var(--aura-radius-xl);
+  --yt-motion-fast: var(--aura-duration-fast);
+  --yt-motion-med: var(--aura-duration-base);
+  --yt-motion-slow: var(--aura-duration-slow);
+}
+
+/* ═══ GLOBAL RESET & BASE ═══ */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--aura-font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: var(--aura-gradient-brand-soft);
+  background-attachment: fixed;
+  color: var(--aura-text-primary);
+  overflow-x: clip;
+  min-height: 100vh;
+}
+
+#__next,
+.App {
+  min-height: 100vh;
+  color: var(--aura-text-primary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--aura-duration-fast) var(--aura-ease-smooth);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+img,
+video,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--aura-purple-200);
+  color: var(--aura-purple-700);
+}
+
+/* ═══ SCROLLBAR ═══ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--aura-blue-300), var(--aura-purple-300));
+  border-radius: var(--aura-radius-full);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--aura-blue-400), var(--aura-purple-400));
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+/* ═══ FOCUS ═══ */
+:focus-visible {
+  outline: 2px solid var(--aura-purple-400);
+  outline-offset: 2px;
+  border-radius: var(--aura-radius-sm);
+}
+
+/* ═══ KEYFRAMES ═══ */
+@keyframes aura-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes aura-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aura-fade-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aura-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes aura-pop-in {
+  0% { opacity: 0; transform: scale(0.85) translateY(10px); }
+  65% { opacity: 1; transform: scale(1.03) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes aura-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes aura-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aura-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes aura-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes aura-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes aura-ripple {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes aura-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes aura-slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes aura-check {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ═══ UTILITY CLASSES ═══ */
+.aura-fade-up { animation: aura-fade-up var(--aura-duration-slow) var(--aura-ease-out) both; }
+.aura-scale-in { animation: aura-scale-in var(--aura-duration-base) var(--aura-ease-spring) both; }
+.aura-pop-in { animation: aura-pop-in var(--aura-duration-base) var(--aura-ease-spring) both; }
+
+.aura-glass {
+  background: var(--aura-bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.aura-glass-strong {
+  background: var(--aura-bg-glass-strong);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.aura-gradient-text {
+  background: var(--aura-gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 200%;
+  animation: aura-gradient-shift 6s ease infinite;
+}
+
+.aura-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--aura-gray-200);
+  border-radius: var(--aura-radius-md);
+}
+.aura-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent);
+  background-size: 200% 100%;
+  animation: aura-shimmer 1.6s infinite;
+}
+
+.aura-no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.aura-no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ═══ MATERIAL SYMBOLS ═══ */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  user-select: none;
+}
+.material-symbols-outlined.fill-1,
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ═══ DEVICE RESPONSIVE ═══ */
+html[data-device='phone'] body {
+  background-attachment: scroll;
+}
+
+html[data-device='phone'] {
+  --aura-navbar-h: 56px;
+  --aura-bottom-nav-h: 64px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --aura-navbar-h: 56px;
+    --aura-bottom-nav-h: 64px;
+    --aura-radius-lg: 16px;
+    --aura-radius-xl: 22px;
+    --aura-radius-2xl: 28px;
+  }
+}
+
+/* ═══ REDUCED MOTION ═══ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══ PREMIUM LOADER ═══ */
+.aura-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.aura-loader-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--aura-gradient-brand);
+  animation: aura-pulse 1.2s ease-in-out infinite;
+}
+.aura-loader-dot:nth-child(2) { animation-delay: 0.15s; }
+.aura-loader-dot:nth-child(3) { animation-delay: 0.3s; }
+
+.aura-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid rgba(192, 132, 252, 0.18);
+  border-top-color: var(--aura-purple-400);
+  border-radius: 50%;
+  animation: aura-spin 0.7s linear infinite;
+}
+
+.aura-spinner-lg {
+  width: 40px;
+  height: 40px;
+  border-width: 3.5px;
+}
+
+/* ═══ PRESET BUTTONS ═══ */
+.aura-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--aura-radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: transform var(--aura-duration-fast) var(--aura-ease-spring),
+              box-shadow var(--aura-duration-base) var(--aura-ease-smooth),
+              background var(--aura-duration-base) var(--aura-ease-smooth);
+  white-space: nowrap;
+}
+.aura-btn:active {
+  transform: scale(0.96);
+}
+
+.aura-btn-primary {
+  background: var(--aura-gradient-brand);
+  background-size: 200% 200%;
+  color: #FFFFFF;
+  box-shadow: var(--aura-shadow-blue);
+}
+.aura-btn-primary:hover {
+  background-position: 100% 50%;
+  box-shadow: var(--aura-shadow-lg), 0 8px 32px rgba(192, 132, 252, 0.28);
+  transform: translateY(-1px);
+}
+
+.aura-btn-ghost {
+  background: rgba(96, 165, 250, 0.10);
+  color: var(--aura-blue-600);
+}
+.aura-btn-ghost:hover {
+  background: rgba(96, 165, 250, 0.18);
+}

@@ -1,11 +1,10 @@
 "use client";
 // @ts-nocheck
-import React, { useEffect, Suspense } from 'react';
+import React, { useEffect } from 'react';
 import useAuthStore from '@/store/authStore';
 import { initSmoothScroll } from '@/utils/smoothScroll';
 import MobileBottomNav from '@/components/MobileBottomNav/MobileBottomNav';
-import { ThemeProvider } from '@/theme/ThemeSystem';
-import '@/theme/ThemeSystem.css';
+import '@/theme/DesignSystem.css';
 import '../App.css';
 
 export default function RootLayout({
@@ -55,7 +54,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){
@@ -73,10 +72,8 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <div className="App">
-          <ThemeProvider>
-            {children}
-            <MobileBottomNav />
-          </ThemeProvider>
+          {children}
+          <MobileBottomNav />
         </div>
       </body>
     </html>
